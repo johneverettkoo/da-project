@@ -292,6 +292,10 @@ def diversity_experiment(x_train, y_train,
                          verbose=0):
     """perform diversity experiment for a range of train sizes"""
 
+    # normalize pixel values
+    x_train = x_train / 255.
+    x_test = x_test / 255.
+
     results_df = []
 
     for train_size in train_sizes:
