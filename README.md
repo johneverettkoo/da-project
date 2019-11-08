@@ -11,11 +11,14 @@ Complete:
 * Diversity experiment on CIFAR-10 dataset
 * Diversity experiment on MNIST dataset
 
-Coming soon:
+In progress:
 
 * Empirical results on how the image sampling method corresponds to Inception Score
 * A (slightly more) formal write-up of results thus far
 * A more disciplined take on object size
+* Tweak the hyperparameters
+* Change the validation set from a random subset to something that also incorporates similarity/diversity
+* Qualitatively selecting diverse/similar training sets
 
 Notes:
 
