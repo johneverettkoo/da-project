@@ -276,7 +276,7 @@ cifar.df %>%
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
   ggplot() + 
-  scale_y_log10() + 
+  # scale_y_log10() + 
   # scale_x_log10() + 
   scale_colour_brewer(palette = 'Set1') + 
   geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
@@ -290,13 +290,12 @@ cifar.df %>%
        colour = 'train set type')
 ```
 
-Here, our results suggest no relationship between image diversity and model 
-performance (Fig. \ref{fig:mnist}, \ref{fig:cifar10}). However, this may 
-perhaps be due to the fact that this classification task is easier. In 
-particular, once we reach ~200 images per class in the MNIST data, all 
-training sets attain greater than 90% accuracy. We tried repeating this 
-experiment with very small datasets (Fig. \ref{fig:mnist_small}, 
-\ref{fig:cifar_small}). 
+Here, our results suggest no significant relationship between image diversity
+and model performance (Fig. \ref{fig:mnist}, \ref{fig:cifar10}). However, this 
+may perhaps be due to the fact that this classification task is easier. In 
+particular, once we reach ~100 images per class in the MNIST data, all 
+training sets attain ~95% accuracy. We tried repeating this experiment with 
+very small datasets (Fig. \ref{fig:mnist_small}, \ref{fig:cifar_small}). 
 
 ```{r mnist_small, fig.cap = 'Diversity experiment results on small MNIST data'}
 mnist.small.df %>% 
