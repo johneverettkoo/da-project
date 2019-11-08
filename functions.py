@@ -246,6 +246,7 @@ def diversity_experiment_single(x_train, y_train,
                                                            lr, momentum, batch_size,
                                                            patience, max_epochs,
                                                            verbose)
+        # print(f'diverse accuracy: {diverse_accuracy}')
         similar_accuracy, similar_loss = repeat_experiment(x_diverse, y_diverse,
                                                            x_val, y_val,
                                                            x_test, y_test,
@@ -253,6 +254,7 @@ def diversity_experiment_single(x_train, y_train,
                                                            lr, momentum, batch_size,
                                                            patience, max_epochs,
                                                            verbose)
+        # print(f'similar accuracy: {similar_accuracy}')
         random_accuracy, random_loss = repeat_experiment(x_diverse, y_diverse,
                                                          x_val, y_val,
                                                          x_test, y_test,
