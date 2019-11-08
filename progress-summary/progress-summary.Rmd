@@ -339,7 +339,7 @@ cifar.small.df %>%
        colour = 'train set type')
 ```
 
-### Next steps:
+### Next steps and ideas/concerns
 
 * A previous study used qualitative measures of diversity to obtain better 
 model performance. Perhaps we can try something like this on a dataset with 
@@ -365,3 +365,10 @@ distance matrix)
 * More lit review on GAN performance (currently the only ones I can find 
 require a pre-trained image classification model, which somewhat defeats the 
 purpose)
+* If we sample from a elliptical point cloud in $\mathbb{R}^d$ in such a way 
+that we want to maximize pairwise distances, and if we draw fewer than $2d$ 
+points, we will tend to pick points on the edges of the ellipse. In our case, 
+GIST features are in $\mathbb{R}^{960}$, and we are drawing fewer than 
+$2 \times 960$ points, so we are very likely only drawing exterior points. 
+This might still be desirable, but I'm not sure what the implications of this 
+would be.
