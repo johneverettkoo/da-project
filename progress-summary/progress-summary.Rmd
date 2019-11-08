@@ -1,0 +1,335 @@
+---
+title: Identifying Measures of Training Data Quality for Classifying Images
+# author:
+#   - David Crandall
+#   - John Koo
+#   - Michael Trosset
+output: 
+  pdf_document:
+    citation_package: natbib
+bibliography: progress-summary.bib
+# output: html_document
+# geometry: "left=1cm,right=1cm,top=1cm,bottom=1.5cm"
+urlcolor: blue
+header-includes:
+- \usepackage{float}
+- \usepackage{mathtools}
+abstract: 'Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Our work aims to address this problem by setting a training data "budget" by limiting the number of images allowed for model fitting and developing a method of choosing training images for the best model performance under this constraint. We explore measures of image quality and diversity to define a training data quality metric, inspired by image embedding methods as well as various measures of performance for generative adversarial networks (GANs), and show how these correlate with fitted model performance.'
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      comment = NA, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      fig.pos = 'H', 
+                      fig.align = 'center', 
+                      fig.height = 2, 
+                      fig.width = 4, 
+                      fig.dpi = 100)
+options(xtable.comment = FALSE, 
+        xtable.table.placement = 'H')
+
+library(ggplot2)
+import::from(magrittr, `%>%`, `%<>%`)
+
+# theme_set(ggthemes::theme_base())
+theme_set(theme_bw())
+```
+
+# Introduction
+
+LeNet-5 \citep{Lecun98gradient-basedlearning} was the first widely recognized 
+CNN architecture for image classification. Consisting of only seven layers,
+three of which are convolutional, training this network on $32 \times 32$ 
+greyscale images of handwritten digits involved fitting 60,000 model parameters. 
+Over time, as larger datasets and more powerful computer hardware became 
+available, CNN architectures grew deeper and more complicated (AlexNet
+\citep{Krizhevsky:2012:ICD:2999134.2999257}, consists of 8 layers and 60M
+parameters, and VGG16 \citep{simonyan2014deep}, consists of 41 layers and 
+138M parameters). Due to the massive number of training parameters, these deep 
+models require large amounts of data to prevent overfitting. In fact, it has 
+been observed that performance gains can continue to scale with the training 
+set size, even into the billions \citep{mahajan2018exploring}. 
+
+However, obtaining large datasets for deep models is not always feasible. 
+Manually labelling thousands or even millions of images can be a tedious, 
+time-consuming, and expensive \citep{Christensen_2016}.
+Some proposed and empirically verified solutions to the limited data problem
+include using a smaller network with fewer parameters, starting with a
+pre-trained model, and image augmentation \citep{perez2017effectiveness}. In 
+this paper, we propose methods for selectively choosing training images under a 
+set data "budget" and discuss various measures and statistics on training sets 
+that correlate to model performance on a separate test set. 
+
+# Previous Work
+
+\citep{NIPS2018_7396} demonstrated that given a large pool of images 
+and a fixed training set size, it is possible to tailor the training set for 
+fitting a VGG16 network that results in better or worse performance on a 
+separate test set. They then described two characteristics of the datasets that 
+seemed to correspond to model performance: object size (how much of the image 
+the object takes up) and diversity (after embedding the images in 
+$\mathbb{R}^d$, how much space the training point cloud takes up). Their study 
+showed that model performance correlated positively with object size in the 
+training set, and training sets consisting of "diverse" images tended to 
+outperform those consisting of "similar" images. 
+
+## Replication Study
+
+The data in the above study can be described as follows:
+
+* Training images were sampled from the frames of first person video feeds. Each 
+image contained one of 24 toys that the toddlers were playing with. The video 
+was taken with a $70^\circ$ lens. Bounding boxes of the toys were drawn for 
+each image to determine how much of the image each toy took up. 
+* The training images were blurred around the object to simulate acuity. 
+* Validation and testing sets consisted of artificially generated images of the 
+24 toys. 
+
+The size experiment was as follows:
+
+* A training set was selected of the "largest" objects (images in which the 
+object we wish to classify took up more of the image). Another training set 
+was selected of the "smallest" objects (images in which the object took up 
+less of the image). 
+* The images were cropped to simulate different fields of view between 
+$30^\circ$ and the original $70^\circ$. 
+* For each object size training subset and field of view, a VGG16 network 
+pretrained on the ImageNet dataset was fit to these images using a fixed set of 
+hyperparameters. Then performance was measured on the test set. This was 
+repeated 10 times to obtain interval estimates for performance. 
+
+The results of this experiment suggested that using a training set of "larger" 
+images results in better model performance than using a training set of 
+"smaller" images. In addition, decreasing the field of view (i.e., cropping 
+into the object of interest) of the training images resulted in progressively 
+better performance. This suggests that in order to obtain the best training set,
+the objects we wish to classify must be prominently displayed in the images.
+
+The diversity experiment was as follows:
+
+* The training images were embedded into high dimensional Euclidean space 
+using GIST features \citep{Torralba:2003:CPO:644361.644382}. 
+* Points were sampled from this embedding using a greedy algorithm to maximize 
+the distance between the points. The corresponding images became the "diverse" 
+training set while the reamining images became the "similar" training set. 
+* VGG16 networks pretrained on the ImageNet dataset were fit to the two 
+training sets, using the same fixed set of hyperparameters as before. This was 
+repeated 10 times. Performance was measured on the test set. Field of view 
+was also adjusted incrementally as in the previous experiment.
+
+The results of the diversity experiment suggest that the "diverse" training set 
+results in a better performing model than the "similar" training set. As before,
+decreasing the field of view improved performance.
+
+### Stanford Dogs Dataset
+
+```{r}
+dogs.diversity.path <- 
+  '~/dev/da-project/misc/stanford-dogs/results-diversity.csv'
+dogs.size.path <- 
+  '~/dev/da-project/misc/stanford-dogs/results-size.csv'
+
+dogs.diversity.df <- readr::read_csv(dogs.diversity.path)
+dogs.size.df <- readr::read_csv(dogs.size.path)
+```
+
+In order to replicate the study as closely as possible with a different dataset,
+we needed an image classification dataset consisting of only one object/class 
+per image and yet also containing either bounding box or segmentation mask 
+information for each image, in order to both measure the object size in the 
+image as well as zoom into the object to simulate different fields of view. One
+dataset that contains this information is the Stanford Dogs dataset 
+\citep{KhoslaYaoJayadevaprakashFeiFei_FGVC2011}, consisting of around 20,000 
+images of 120 different dog breeds. We assumed that the original images were 
+taken with a $70^\circ$ field of view. Some of the images were of multiple 
+dogs, and these images were discarded. For each breed, 100 images were randomly 
+selected as the training set, 25 images were randomly selected as the 
+validation set, and the rest were set aside for testing. We did not blur these 
+images.
+
+#### Size Experiment
+
+Using the bounding box information, we calculated the proportion of the image 
+that the dogs took up. Then for each breed, we split the 100 training images 
+so that the "large" dataset contains images in which the dogs take up more of 
+the image and the "small" dataset contains images in which the dogs take up 
+less of the image. We also incrementally zoomed into the center of the bounding 
+boxes to simulate lower fields of view.
+
+The results (Figure \ref{fig:dogs_size}) suggest that when using the unscaled 
+images ($70^\circ$ field of view), we obtain better model performance when 
+training on images in which the dogs take up more of the image. This is 
+consistent with the results of the previous study. However, in our results, 
+we do not get progressively better performance as we decrease the field of 
+view. Visual inspection of the images shows that the dogs already take up most 
+of the image in many cases, compared to the toys taking up relatively little of
+the images in the toys dataset (median bounding box proportion of around 50\% 
+for the dogs dataset vs. around 10\% for the toys dataset). As we crop the 
+images to simulate lower fields of view, in some cases, we end up cropping so 
+much that we are left with just a patch of fur in our image. We also suspect 
+that since in the toys dataset, the validation and testing images prominently 
+display the toys, compared to the training dataset where the toys take up 
+relatively little of the images, cropping in makes the training set look more 
+like the testing set. No such disparity exists in the training vs. validation 
+vs. testing sets for the dogs datasets. However, the fact that the "large" 
+dataset outperformed the "small" dataset using the uncropped data suggests that 
+there may be some relationship between model performance and object size.
+
+```{r dogs_size, fig.cap = '"Size" experiment on the Stanford Dogs dataset'}
+dogs.size.df %>% 
+  dplyr::mutate(size = ifelse(size == 'high', 'large', 'small')) %>% 
+  dplyr::group_by(fov, size) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = fov, y = mean.acc, colour = size)) + 
+  geom_errorbar(aes(x = fov, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = size),
+                width = 1) + 
+  labs(x = 'field of view', 
+       y = 'test accuracy', 
+       colour = 'train set type')
+```
+
+#### Diversity Experiment
+
+As in the previous study, we embedded the images using GIST features and for 
+each breed, sampled 50 points to maximize Euclidean distance, and set aside 
+the corresponding images as the "diverse" training set. The reamining 50 images 
+for each breed were set aside as the "similar" training set.
+
+As in the size experiment, decreasing the field of view reduced model 
+performance. There was no significant difference in model performance between 
+the "diverse" and "similar" training sets, although perhaps we would've 
+observed a more pronounced difference if we increased the number of repetitions
+(Fig \ref{fig:dogs_diverse}).
+
+```{r dogs_diverse, fig.cap = '"Diversity" experiment on the Stanford Dogs dataset'}
+dogs.diversity.df %>% 
+  dplyr::group_by(fov, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = fov, y = mean.acc, colour = train_set_type)) + 
+  geom_errorbar(aes(x = fov, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type),
+                width = 1) + 
+  labs(x = 'field of view', 
+       y = 'test accuracy', 
+       colour = 'train set type')
+```
+
+### CIFAR-10 and MNIST Datasets
+
+Focusing just on training set diversity and ignoring object size and field of 
+view allows us to expand this study to more datasets, as we no longer require 
+bounding boxes or segmentation masks. Two datasets commonly used for image 
+classification experiments are the CIFAR-10 
+\citep{Krizhevsky09learningmultiple} and MNIST \citep{lecun2010mnist} datasets.
+Each consist of 10 object classes. We repeated the diversity experiment on 
+each dataset, this time varying the training set size instead of the field of 
+view.
+
+```{r}
+cifar10.path <- '~/dev/da-project/cifar-results.csv'
+mnist.path <- '~/dev/da-project/mnist-results.csv'
+cifar10.small.path <- '~/dev/da-project/cifar-results-small-data.csv'
+mnist.small.path <- '~/dev/da-project/mnist-results-small-data.csv'
+
+cifar.df <- readr::read_csv(cifar10.path)
+mnist.df <- readr::read_csv(mnist.path)
+cifar.small.df <- readr::read_csv(cifar10.small.path)
+mnist.small.df <- readr::read_csv(mnist.small.path)
+```
+
+```{r mnist, fig.cap = 'Diversity experiment results on MNIST data'}
+mnist.df %>% 
+  dplyr::filter(accuracy > .12) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type),
+                width = 1) + 
+  labs(x = 'training set size', 
+       y = 'test accuracy', 
+       colour = 'train set type')
+```
+
+```{r cifar10, fig.cap = 'Diversity experiment results on CIFAR-10 data'}
+cifar.df %>% 
+  dplyr::filter(accuracy > .1) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type),
+                width = 1) + 
+  labs(x = 'training set size', 
+       y = 'test accuracy', 
+       colour = 'train set type')
+```
+
+Here, our results suggest no relationship between image diversity and model 
+performance (Fig. \ref{fig:mnist}, \ref{fig:cifar10}). However, this may 
+perhaps be due to the fact that this classification task is easier. In 
+particular, once we reach ~200 images per class in the MNIST data, all 
+training sets attain greater than 90% accuracy. We tried repeating this 
+experiment with very small datasets (Fig. \ref{fig:mnist_small}, 
+\ref{fig:cifar_small}). 
+
+```{r mnist_small, fig.cap = 'Diversity experiment results on small MNIST data'}
+mnist.small.df %>% 
+  # dplyr::filter(accuracy > .1) %>%
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type),
+                width = 1) + 
+  labs(x = 'training set size', 
+       y = 'test accuracy', 
+       colour = 'train set type')
+```
+
+```{r cifar_small, fig.cap = 'Diversity experiment results on small CIFAR-10 data'}
+cifar.small.df %>% 
+  # dplyr::filter(accuracy > .1) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type),
+                width = 1) + 
+  labs(x = 'training set size', 
+       y = 'test accuracy', 
+       colour = 'train set type')
+```
