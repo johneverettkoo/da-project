@@ -362,9 +362,9 @@ minimum)
 from an embedding (although we'd want to avoid having to construct a full 
 distance matrix)
 * Consider different image embeddings
-* More lit review on GAN performance (currently the only ones I can find 
-require a pre-trained image classification model, which somewhat defeats the 
-purpose)
+* More lit review on GAN performance measures (currently the only ones I can 
+find require a pre-trained image classification model, which somewhat defeats 
+the purpose)
 * If we sample from a elliptical point cloud in $\mathbb{R}^d$ in such a way 
 that we want to maximize pairwise distances, and if we draw fewer than $2d$ 
 points, we will tend to pick points on the edges of the ellipse. In our case, 
