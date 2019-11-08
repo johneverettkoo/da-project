@@ -337,3 +337,23 @@ cifar.small.df %>%
        y = 'test accuracy', 
        colour = 'train set type')
 ```
+
+### Next steps:
+
+* A previous study used qualitative measures of diversity to obtain better 
+model performance. Perhaps we can try something like this on a dataset with 
+sub-classes (e.g., CIFAR-100)---for each class, we sample images from 
+subclasses using a multinomial distribution, the parameters of which we adjust 
+depending on how diverse we want to make the training images (equal 
+probabilities for a "diverse" set, skewed probabilities for a "similar" set). 
+* To more closely match the original study, a (relatively large) random subset 
+of the original training data was set aside for validation. Perhaps if we 
+match both the size and "diversity" of the validation set to the training sets, 
+we would see a more pronounced difference (and this would be a more realistic 
+scenario).
+* Tweak the hyperparameters
+* See how the diverse/similar image sampling method corresponds to other 
+commonly used measures of image diversity, such as Inception score
+* Look at performance consistency rather than just average performance (perhaps 
+training on a diverse set lowers the probability of finding a bad local 
+minimum)
