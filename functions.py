@@ -163,7 +163,7 @@ def construct_train_val_by_class(x_train, y_train, x_gist,
 
 def repeat_experiment(x_train, y_train, x_val, y_val, x_test, y_test,
                       runs=10,
-                      lr=.001, momentum=.9, batch_size=32,
+                      lr=.0001, momentum=.9, batch_size=32,
                       patience=2, max_epochs=100, verbose=1):
     """train vgg16 for a dataset multiple times"""
 
