@@ -1,5 +1,8 @@
 # Data Analysis Project
 
+Paper by S. Bambach, D. Crandal, L. Smith, C. Yu:
+[Toddler-Inspired Visual Object Learning](http://vision.soic.indiana.edu/papers/diversity2018nips.pdf)
+
 Complete:
 
 * "Diverse" vs "similar" sampling demo
