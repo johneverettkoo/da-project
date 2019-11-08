@@ -252,11 +252,11 @@ mnist.small.df <- readr::read_csv(mnist.small.path)
 
 ```{r mnist, fig.cap = 'Diversity experiment results on MNIST data'}
 mnist.df %>% 
-  dplyr::filter(accuracy > .1) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
   ggplot() + 
+  # scale_y_log10() + 
   scale_colour_brewer(palette = 'Set1') + 
   geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
   geom_errorbar(aes(x = train_size, 
