@@ -298,7 +298,9 @@ experiment with very small datasets (Fig. \ref{fig:mnist_small},
 
 ```{r mnist_small, fig.cap = 'Diversity experiment results on small MNIST data'}
 mnist.small.df %>% 
-  # dplyr::filter(accuracy > .1) %>%
+  # dplyr::arrange(train_size, train_set_type, -accuracy) %>% 
+  # dplyr::group_by(train_size, train_set_type) %>% 
+  # dplyr::top_frac(.5) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
@@ -317,7 +319,9 @@ mnist.small.df %>%
 
 ```{r cifar_small, fig.cap = 'Diversity experiment results on small CIFAR-10 data'}
 cifar.small.df %>% 
-  # dplyr::filter(accuracy > .1) %>% 
+  # dplyr::arrange(train_size, train_set_type, -accuracy) %>% 
+  # dplyr::group_by(train_size, train_set_type) %>% 
+  # dplyr::top_frac(.5) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
