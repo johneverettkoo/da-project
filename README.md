@@ -2,6 +2,7 @@
 
 Complete:
 
+* "Diverse" vs "similar" sampling demo
 * Size experiment on Stanford Dogs dataset (in `misc`)
 * Diversity experiment on Stanford Dogs dataset (in `misc`)
 * Diversity experiment on CIFAR-10 dataset
@@ -15,4 +16,4 @@ Coming soon:
 
 Notes:
 
-* "Unclean" code is in `misc`
+* "Unclean" code is in `misc` (will clean up later)
