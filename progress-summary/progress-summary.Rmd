@@ -257,13 +257,14 @@ mnist.df %>%
                    sd.acc = sd(accuracy)) %>% 
   ggplot() + 
   # scale_y_log10() + 
+  scale_x_log10() + 
   scale_colour_brewer(palette = 'Set1') + 
   geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
   geom_errorbar(aes(x = train_size, 
                     ymin = mean.acc - 2 * sd.acc, 
                     ymax = mean.acc + 2 * sd.acc, 
                     colour = train_set_type),
-                width = 1) + 
+                width = .03) + 
   labs(x = 'training set size per class', 
        y = 'test accuracy', 
        colour = 'train set type')
@@ -277,14 +278,14 @@ cifar.df %>%
                    sd.acc = sd(accuracy)) %>% 
   ggplot() + 
   # scale_y_log10() + 
-  # scale_x_log10() + 
+  scale_x_log10() +
   scale_colour_brewer(palette = 'Set1') + 
   geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
   geom_errorbar(aes(x = train_size, 
                     ymin = mean.acc - 2 * sd.acc, 
                     ymax = mean.acc + 2 * sd.acc, 
                     colour = train_set_type),
-                width = 1) + 
+                width = .03) + 
   labs(x = 'training set size per class', 
        y = 'test accuracy', 
        colour = 'train set type')
@@ -396,7 +397,8 @@ cloud with no interior points. This may manifest itself in selecting
 "outlier" images, or images that are unlike the typical image of its class. 
 We can address the first issue by selecting our validation set as follows: 
 First, draw $2 n_{sub}$ images for both the diverse and similar training sets, 
-then for each training set, set aside half for validation. We can address the 
+then for each training set, set aside half for validation. This will be called 
+the "validation from training" sampling method. We can address the 
 second issue by first taking a random sample of size $2 n_{sub}$ and then 
 dividing that sample into diverse and similar subsets by choosing the diverse 
 subset according to maximal distance and setting the remainder as the similar 
@@ -407,7 +409,75 @@ points into a lower dimensional space before sampling.
 
 ***[insert table of different methods here]***
 
-## Other Previous Studies
+```{r}
+cifar10.val.from.train.path <- file.path('~/dev/da-project',
+                                         'subset-validation-from-training',
+                                         'cifar-constrained-val-results.csv')
+mnist.val.from.train.path <- file.path('~/dev/da-project', 
+                                       'subset-validation-from-training',
+                                       'mnist-constrained-val-results.csv')
+cifar10.val.from.train.df <- readr::read_csv(cifar10.val.from.train.path)
+mnist.val.from.train.df <- readr::read_csv(mnist.val.from.train.path)
+```
+
+```{r mnist_val_constrained, fig.cap = 'Diversity on MNIST data, using the "validation from training" sampling method.'}
+mnist.val.from.train.df %>% 
+  # dplyr::filter(accuracy > .15) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL)
+```
+
+```{r cifar10_val_constrained, fig.cap = 'Diversity on CIFAR-10 data, using the "validation from training" sampling method.'}
+cifar10.val.from.train.df %>% 
+  # dplyr::filter(accuracy > .15) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL)
+```
+
+Figures \ref{fig:mnist_val_constrained} and \ref{fig:cifar10_val_constrained} 
+suggest that the diverse sampling method results in higher test accuracy than 
+the similar sampling method when the validation sets are sampled from the 
+training sets. However, for either dataset, the randomly sampled training sets 
+perform as well or outperform the diversely sampled training sets. This 
+may be because when the validation sets are large random samples, the model is 
+able to generalize despite sub-optimal training sets. We can also see that for 
+very small training set sizes, models trained on diverse samples tend to 
+perform worse than models trained on random samples, and as training set sizes 
+increase, the performance of models trained on samples selected with either 
+method begin to coincide. One explanation of this might be that the diverse 
+sampling method tends to choose outliers or atypical images, and as the 
+sample size increases, the diverse sampling method exhausts the set of outliers 
+and begins to sample more typical images. Previous studies show that 
+classification models tend to perform better when outliers or atypical 
+observations are removed from the training set. 
+
+## Other Related Work
 
 \citep{wang2018data} proposed a two-round training approach to better fit 
 CNNs on a subset of the training set. In their approach, A CNN was fit on a 
@@ -429,6 +499,20 @@ predictions, and these images are added to the training subset. This is then
 repeated over multiple rounds, increasing the size of the training data over 
 each round. The study demonstrates that this method outperforms training on 
 randomly sampled subsets of the same size. 
+
+\citep{Ferreira2016UnsupervisedES} proposed a maximum entropy based sampling 
+method for selecting training data. 
+
+\citep{Wilson1972AsymptoticPO}
+
+Based on the literature, training set selection methods can be classified as 
+denoising/filtering methods or as diversification methods. Denoising and 
+filtering methods remove outliers or atypical observations, while 
+diversification methods aim to make training observations as different from 
+each other as possible. These two ideas appear to be at odds with one another. 
+There also doesn't appear to be much literature on how to apply such methods on 
+image data, as they assume that the data can be naturally represented in 
+Euclidean space (e.g., as a data matrix). 
 
 # New Proposed Methods
 
