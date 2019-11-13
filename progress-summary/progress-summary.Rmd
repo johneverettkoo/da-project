@@ -177,7 +177,7 @@ vs. testing sets for the dogs datasets. However, the fact that the "large"
 dataset outperformed the "small" dataset using the uncropped data suggests that 
 there may be some relationship between model performance and object size.
 
-```{r dogs_size, fig.cap = '"Size" experiment on the Stanford Dogs dataset'}
+```{r dogs_size, fig.cap = '"Size" experiment on the Stanford Dogs dataset.'}
 dogs.size.df %>% 
   dplyr::mutate(size = ifelse(size == 'high', 'large', 'small')) %>% 
   dplyr::group_by(fov, size) %>% 
@@ -209,7 +209,7 @@ the "diverse" and "similar" training sets, although perhaps we would've
 observed a more pronounced difference if we increased the number of repetitions
 (Fig \ref{fig:dogs_diverse}).
 
-```{r dogs_diverse, fig.cap = '"Diversity" experiment on the Stanford Dogs dataset'}
+```{r dogs_diverse, fig.cap = '"Diversity" experiment on the Stanford Dogs dataset.'}
 dogs.diversity.df %>% 
   dplyr::group_by(fov, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
@@ -250,7 +250,7 @@ cifar.small.df <- readr::read_csv(cifar10.small.path)
 mnist.small.df <- readr::read_csv(mnist.small.path)
 ```
 
-```{r mnist, fig.cap = 'Diversity experiment results on MNIST data'}
+```{r mnist, fig.cap = 'Diversity experiment results on MNIST data.'}
 mnist.df %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
@@ -269,7 +269,7 @@ mnist.df %>%
        colour = 'train set type')
 ```
 
-```{r cifar10, fig.cap = 'Diversity experiment results on CIFAR-10 data'}
+```{r cifar10, fig.cap = 'Diversity experiment results on CIFAR-10 data.'}
 cifar.df %>% 
   # dplyr::filter(accuracy > .1) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
@@ -299,7 +299,7 @@ very small training samples (Fig. \ref{fig:mnist_small}, \ref{fig:cifar_small}).
 However, again, we see no significant difference in the three training data 
 subsets.
 
-```{r mnist_small, fig.cap = 'Diversity experiment results on small MNIST data'}
+```{r mnist_small, fig.cap = 'Diversity experiment results on small MNIST data.'}
 mnist.small.df %>% 
   # dplyr::arrange(train_size, train_set_type, -accuracy) %>%
   # dplyr::group_by(train_size, train_set_type) %>%
@@ -320,7 +320,7 @@ mnist.small.df %>%
        colour = 'train set type')
 ```
 
-```{r cifar_small, fig.cap = 'Diversity experiment results on small CIFAR-10 data'}
+```{r cifar_small, fig.cap = 'Diversity experiment results on small CIFAR-10 data.'}
 cifar.small.df %>% 
   # dplyr::arrange(train_size, train_set_type, -accuracy) %>%
   # dplyr::group_by(train_size, train_set_type) %>%
@@ -359,8 +359,30 @@ sampling). The corresponding images comprise the "diverse" training set.
 are as close to each other as possible. This is done by selecting a random 
 point and then selecting the $n_{sub} - 1$ nearest points. The corresponding 
 images comprise the "similar" training set.
+5. Sample $n_{sub}$ images from each class uniformly at random without
+replacement.
 
-***[insert diverse/similar/random subset selection demo figures here]***
+Note that this method does not necessarily force the diverse and similar 
+training sets to be disjoint (see Fig. \ref{fig:cloud}). In Fig.
+\ref{fig:diverse_cats}, \ref{fig:similar_cats}, \ref{fig:random_cats}, 10 cat 
+images were sampled from a pool of 5,000 using the diverse, similar, and random 
+sampling methods respectively.
+
+```{r cloud, out.width = '33%', fig.cap = 'Diverse (red) vs similar (blue) samples taken from a uniform point cloud. The two samples are not disjoint, and some of the blue points may be masking some of the red points.'}
+knitr::include_graphics('~/dev/da-project/images/pointcloud.png')
+```
+
+```{r diverse_cats, out.width = '33%', fig.cap = 'Images of cats selected by the diverse sampling method.'}
+knitr::include_graphics('~/dev/da-project/images/diverse-cats.png')
+```
+
+```{r similar_cats, out.width = '33%', fig.cap = 'Images of cats selected by the similar sampling method.'}
+knitr::include_graphics('~/dev/da-project/images/similar-cats.png')
+```
+
+```{r random_cats, out.width = '33%', fig.cap = 'Images of cats selected by the random sampling method.'}
+knitr::include_graphics('~/dev/da-project/images/random-cats.png')
+```
 
 We believe that this method is as close as possible to the diversity experiment
 described in \citep{NIPS2018_7396} using our datasets. However, this method 
@@ -370,52 +392,20 @@ selected validation set seems out of place. Second, if we draw points from a
 $\mathbb{R}^d$ such that the points are as far from each other as possible and 
 our sample size is $n \leq 2 d$, and we think of the original sample as a point
 cloud, we would expect all of our points to lie on the edges of the point
-cloud with no interior points. We can address the first issue by selecting our 
-validation set as follows: First, draw $2 n_{sub}$ images for both the diverse 
-and similar training sets, then for each training set, set aside half for 
-validation. We can address the second issue by first taking a random sample of 
-size $2 n_{sub}$ and then dividing that sample into diverse and similar 
-subsets by choosing the diverse subset according to maximal distance and 
-setting the remainder as the similar subset. 
+cloud with no interior points. This may manifest itself in selecting 
+"outlier" images, or images that are unlike the typical image of its class. 
+We can address the first issue by selecting our validation set as follows: 
+First, draw $2 n_{sub}$ images for both the diverse and similar training sets, 
+then for each training set, set aside half for validation. We can address the 
+second issue by first taking a random sample of size $2 n_{sub}$ and then 
+dividing that sample into diverse and similar subsets by choosing the diverse 
+subset according to maximal distance and setting the remainder as the similar 
+subset. 
 
 Another possible way to address the second issue is by projecting the embedded 
 points into a lower dimensional space before sampling. 
 
 ***[insert table of different methods here]***
-
-### Next steps and ideas/concerns
-
-* A previous study used qualitative measures of diversity to obtain better 
-model performance. Perhaps we can try something like this on a dataset with 
-sub-classes (e.g., CIFAR-100)---for each class, we sample images from 
-subclasses using a multinomial distribution, the parameters of which we adjust 
-depending on how diverse we want to make the training images (equal 
-probabilities for a "diverse" set, skewed probabilities for a "similar" set). 
-* To more closely match the original study, a (relatively large) random subset 
-of the original training data was set aside for validation. Perhaps if we 
-match both the size and "diversity" of the validation set to the training sets, 
-we would see a more pronounced difference (and this would be a more realistic 
-scenario).
-* Tweak the hyperparameters
-* See how the diverse/similar image sampling method corresponds to other 
-commonly used measures of image diversity, such as Inception score
-* Look at performance consistency rather than just average performance (perhaps 
-training on a diverse set lowers the probability of finding a bad local 
-minimum)
-* Consider different methods for selecting "diverse" or "similar" subsets 
-from an embedding (although we'd want to avoid having to construct a full 
-distance matrix)
-* Consider different image embeddings
-* More lit review on GAN performance measures (currently the only ones I can 
-find require a pre-trained image classification model, which somewhat defeats 
-the purpose)
-* If we sample from a elliptical point cloud in $\mathbb{R}^d$ in such a way 
-that we want to maximize pairwise distances, and if we draw fewer than $2d$ 
-points, we will tend to pick points on the edges of the ellipse. In our case, 
-GIST features are in $\mathbb{R}^{960}$, and we are drawing fewer than 
-$2 \times 960$ points, so we are very likely only drawing exterior points. 
-This might still be desirable, but I'm not sure what the implications of this 
-would be.
 
 ## Other Previous Studies
 
@@ -440,7 +430,13 @@ repeated over multiple rounds, increasing the size of the training data over
 each round. The study demonstrates that this method outperforms training on 
 randomly sampled subsets of the same size. 
 
-# New Proposed Method
+# New Proposed Methods
+
+## Transfer Learning-Based Methods
+
+## Active Learning-Based Methods
+
+## Methods Around Sampling from a Model-Agnostic Embedding
 
 # Results
 
