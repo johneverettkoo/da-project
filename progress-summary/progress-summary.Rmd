@@ -381,6 +381,8 @@ setting the remainder as the similar subset.
 Another possible way to address the second issue is by projecting the embedded 
 points into a lower dimensional space before sampling. 
 
+***[insert table of different methods here]***
+
 ### Next steps and ideas/concerns
 
 * A previous study used qualitative measures of diversity to obtain better 
