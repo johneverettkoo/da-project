@@ -1,9 +1,9 @@
 ---
 title: Identifying Measures of Training Data Quality for Classifying Images
-# author:
-#   - David Crandall
-#   - John Koo
-#   - Michael Trosset
+author:
+  - David Crandall
+  - John Koo
+  - Michael Trosset
 output: 
   pdf_document:
     citation_package: natbib
@@ -14,7 +14,7 @@ urlcolor: blue
 header-includes:
 - \usepackage{float}
 - \usepackage{mathtools}
-abstract: 'Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Our work aims to address this problem by setting a training data "budget" by limiting the number of images allowed for model fitting and developing a method of choosing training images for the best model performance under this constraint. We explore measures of image quality and diversity to define a training data quality metric, inspired by image embedding methods as well as various measures of performance for generative adversarial networks (GANs), and show how these correlate with fitted model performance.'
+abstract: 'Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Our work aims to address this problem by setting a training data "budget" by limiting the number of images allowed for model fitting and developing a method of choosing training images for the best model performance under this constraint. We explore measures of image quality and diversity to define a training data quality metric, inspired by image embedding methods and measures of dissimilarity and distance.'
 ---
 
 ```{r setup, include = FALSE}
@@ -264,7 +264,7 @@ mnist.df %>%
                     ymax = mean.acc + 2 * sd.acc, 
                     colour = train_set_type),
                 width = 1) + 
-  labs(x = 'training set size', 
+  labs(x = 'training set size per class', 
        y = 'test accuracy', 
        colour = 'train set type')
 ```
@@ -285,7 +285,7 @@ cifar.df %>%
                     ymax = mean.acc + 2 * sd.acc, 
                     colour = train_set_type),
                 width = 1) + 
-  labs(x = 'training set size', 
+  labs(x = 'training set size per class', 
        y = 'test accuracy', 
        colour = 'train set type')
 ```
@@ -295,7 +295,9 @@ and model performance (Fig. \ref{fig:mnist}, \ref{fig:cifar10}). However, this
 may perhaps be due to the fact that this classification task is easier. In 
 particular, once we reach ~100 images per class in the MNIST data, all 
 training sets attain ~95% accuracy. We tried repeating this experiment with 
-very small datasets (Fig. \ref{fig:mnist_small}, \ref{fig:cifar_small}). 
+very small training samples (Fig. \ref{fig:mnist_small}, \ref{fig:cifar_small}). 
+However, again, we see no significant difference in the three training data 
+subsets.
 
 ```{r mnist_small, fig.cap = 'Diversity experiment results on small MNIST data'}
 mnist.small.df %>% 
@@ -313,7 +315,7 @@ mnist.small.df %>%
                     ymax = mean.acc + 2 * sd.acc, 
                     colour = train_set_type),
                 width = 1) + 
-  labs(x = 'training set size', 
+  labs(x = 'training set size per class', 
        y = 'test accuracy', 
        colour = 'train set type')
 ```
@@ -334,10 +336,50 @@ cifar.small.df %>%
                     ymax = mean.acc + 2 * sd.acc, 
                     colour = train_set_type),
                 width = 1) + 
-  labs(x = 'training set size', 
+  labs(x = 'training set size per class', 
        y = 'test accuracy', 
        colour = 'train set type')
 ```
+
+### Alternative Methods for Training Set Selection
+
+In the previous experiments, the training and validation sets were selected 
+as follows:
+
+1. A validation set was randomly sampled from the training set such that it 
+contains 1,000 images of each class. 
+2. Embed the remaining training images in $\mathbb{R}^{960}$ using GIST 
+features.
+3. From the reamining training images, sample $n_{sub}$ images from each class 
+such that their GIST-embedded points are as far from each other as possible 
+(in practice, we use a greedy algorithm for this since it is not possible to 
+try all possible combinations of points, and this induces randomness in the 
+sampling). The corresponding images comprise the "diverse" training set.
+4. Sample $n_{sub}$ images from each class such that their GIST-embedded points 
+are as close to each other as possible. This is done by selecting a random 
+point and then selecting the $n_{sub} - 1$ nearest points. The corresponding 
+images comprise the "similar" training set.
+
+***[insert diverse/similar/random subset selection demo figures here]***
+
+We believe that this method is as close as possible to the diversity experiment
+described in \citep{NIPS2018_7396} using our datasets. However, this method 
+raises some problems. First, if we were to think of this method as 
+intelligently selecting a small training sample, then the large and randomly
+selected validation set seems out of place. Second, if we draw points from a 
+$\mathbb{R}^d$ such that the points are as far from each other as possible and 
+our sample size is $n \leq 2 d$, and we think of the original sample as a point
+cloud, we would expect all of our points to lie on the edges of the point
+cloud with no interior points. We can address the first issue by selecting our 
+validation set as follows: First, draw $2 n_{sub}$ images for both the diverse 
+and similar training sets, then for each training set, set aside half for 
+validation. We can address the second issue by first taking a random sample of 
+size $2 n_{sub}$ and then dividing that sample into diverse and similar 
+subsets by choosing the diverse subset according to maximal distance and 
+setting the remainder as the similar subset. 
+
+Another possible way to address the second issue is by projecting the embedded 
+points into a lower dimensional space before sampling. 
 
 ### Next steps and ideas/concerns
 
@@ -372,3 +414,36 @@ GIST features are in $\mathbb{R}^{960}$, and we are drawing fewer than
 $2 \times 960$ points, so we are very likely only drawing exterior points. 
 This might still be desirable, but I'm not sure what the implications of this 
 would be.
+
+## Other Previous Studies
+
+\citep{wang2018data} proposed a two-round training approach to better fit 
+CNNs on a subset of the training set. In their approach, A CNN was fit on a 
+large training set, then for each image in the training set, an influence 
+measure was computed over all images in the validation set. If the influence 
+was negative, then that training image was discarded. The CNN was then fit 
+again using the reduced training set, and the resulting model was observed to 
+achieve a higher test accuracy than the original model trained prior to 
+subsetting the training data. However, this still requies training on a large 
+dataset, and their goal is to fine-tune a large training set by dropping "bad" 
+observations rather than building an optimal small training set.
+
+\citep{kaushal2019learning} also proposed an active learning approach to limit 
+the size of training data. Their method is as follows: First, a small subset of 
+a large training set is sampled, and a model is fit on the subset. Predictions 
+are then made on the hold-out images in the training set based on this model. 
+Finally, additional images are chosen based on the uncertainty of the model 
+predictions, and these images are added to the training subset. This is then 
+repeated over multiple rounds, increasing the size of the training data over 
+each round. The study demonstrates that this method outperforms training on 
+randomly sampled subsets of the same size. 
+
+# New Proposed Method
+
+# Results
+
+# Conclusion
+
+\newpage
+
+# References
