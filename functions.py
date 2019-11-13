@@ -132,7 +132,6 @@ def split_dataset_diversity_subsample(images, gist_features, train_size=50, val_
     return diverse_images, similar_images, random_images, val_images
 
 
-
 def initialize_vgg16(input_shape, n_classes, lr=.001, momentum=.9):
     """initialize vgg16 with imagenet weights"""
 
@@ -152,7 +151,7 @@ def initialize_vgg16(input_shape, n_classes, lr=.001, momentum=.9):
 
 def construct_train_val_by_class(x_train, y_train, x_gist,
                                  train_size=100, val_size=1000):
-    """construct divers,e similar, and random subsets of training data"""
+    """construct diverse, similar, and random subsets of training data"""
 
     # what are the unique classes and how many are there
     unique_classes = np.unique(y_train)
@@ -177,6 +176,50 @@ def construct_train_val_by_class(x_train, y_train, x_gist,
         # construct the training sets and validation set for this class
         x_cl_div, x_cl_sim, x_cl_rand, x_cl_val = \
             split_dataset_diversity(x_cl, x_cl_g, train_size, val_size)
+
+        # save
+        x_diverse.append(x_cl_div)
+        x_similar.append(x_cl_sim)
+        x_random.append(x_cl_rand)
+        x_val.append(x_cl_val)
+
+    # reshape to valid numpy arrays
+    x_diverse = np.concatenate(x_diverse, 0)
+    x_similar = np.concatenate(x_similar, 0)
+    x_random = np.concatenate(x_random, 0)
+    x_val = np.concatenate(x_val, 0)
+
+    # return
+    return x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, x_val, y_val
+
+
+def construct_train_val_by_class_subsampled(x_train, y_train, x_gist,
+                                            train_size=100, val_size=1000):
+    """construct diverse, similar, and random subsets of training data after subsampling"""
+
+    # what are the unique classes and how many are there
+    unique_classes = np.unique(y_train)
+    n_classes = len(unique_classes)
+
+    # prepare the training and validation data
+    y_diverse = np.repeat(unique_classes, train_size).reshape(n_classes * train_size, 1)
+    y_similar = np.repeat(unique_classes, train_size).reshape(n_classes * train_size, 1)
+    y_random = np.repeat(unique_classes, train_size).reshape(n_classes * train_size, 1)
+    y_val = np.repeat(unique_classes, val_size).reshape(n_classes * val_size, 1)
+    x_diverse = []
+    x_similar = []
+    x_random = []
+    x_val = []
+
+    # split the data for each class to maintain class balance
+    for cl in unique_classes:
+        # get the images and gist features for this class
+        x_cl = x_train[y_train[:, 0] == cl, :, :, :]
+        x_cl_g = x_gist[y_train[:, 0] == cl, :]
+
+        # construct the training sets and validation set for this class
+        x_cl_div, x_cl_sim, x_cl_rand, x_cl_val = \
+            split_dataset_diversity_subsample(x_cl, x_cl_g, train_size, val_size)
 
         # save
         x_diverse.append(x_cl_div)
@@ -472,6 +515,103 @@ def diversity_experiment_constrained_val(x_train, y_train,
                                                                   lr=lr, momentum=momentum, batch_size=batch_size,
                                                                   patience=patience, max_epochs=max_epochs,
                                                                   verbose=verbose)
+        results_df.append(sub_df)
+
+    results_df = pd.concat(results_df)
+
+    return results_df
+
+
+def diversity_experiment_single_subsampled(x_train, y_train,
+                                           x_gist,
+                                           x_test, y_test,
+                                           train_size=100, val_size=1000,
+                                           runs=10,
+                                           lr=.001, momentum=.9, batch_size=32,
+                                           patience=2, max_epochs=100,
+                                           verbose=0):
+    """perform diversity experiment for a single train size (subsampled variety)"""
+
+    # run experiments for the three datasets and repeat
+    diverse_accuracies = np.empty(runs)
+    diverse_losses = np.empty(runs)
+    similar_accuracies = np.empty(runs)
+    similar_losses = np.empty(runs)
+    random_accuracies = np.empty(runs)
+    random_losses = np.empty(runs)
+    for run in np.arange(runs):
+        # construct the training sets and the validation set
+        x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, x_val, y_val = \
+            construct_train_val_by_class_subsampled(x_train, y_train, x_gist, train_size, val_size)
+
+        diverse_accuracy, diverse_loss = experiment(x_diverse, y_diverse,
+                                                    x_val, y_val,
+                                                    x_test, y_test,
+                                                    lr, momentum, batch_size,
+                                                    patience, max_epochs,
+                                                    verbose)
+        # print(f'diverse accuracy: {diverse_accuracy}')
+        similar_accuracy, similar_loss = experiment(x_diverse, y_diverse,
+                                                    x_val, y_val,
+                                                    x_test, y_test,
+                                                    lr, momentum, batch_size,
+                                                    patience, max_epochs,
+                                                    verbose)
+        # print(f'similar accuracy: {similar_accuracy}')
+        random_accuracy, random_loss = experiment(x_diverse, y_diverse,
+                                                  x_val, y_val,
+                                                  x_test, y_test,
+                                                  lr, momentum, batch_size,
+                                                  patience, max_epochs,
+                                                  verbose)
+        diverse_accuracies[run] = diverse_accuracy
+        diverse_losses[run] = diverse_loss
+        similar_accuracies[run] = similar_accuracy
+        similar_losses[run] = similar_loss
+        random_accuracies[run] = random_accuracy
+        random_losses[run] = random_loss
+
+    # compile results into dataframe
+    losses = np.concatenate([diverse_losses, similar_losses, random_losses])
+    accuracies = np.concatenate([diverse_accuracies, similar_accuracies, random_accuracies])
+    train_sets = np.concatenate([np.repeat('diverse', runs),
+                                 np.repeat('similar', runs),
+                                 np.repeat('random', runs)])
+    results_df = pd.DataFrame({'train_size': np.repeat(train_size, runs * 3),
+                               'train_set_type': train_sets,
+                               'loss': losses,
+                               'accuracy': accuracies})
+
+    return results_df
+
+
+def diversity_experiment_subsampled(x_train, y_train,
+                                    x_gist,
+                                    x_test, y_test,
+                                    train_sizes,
+                                    val_size=1000,
+                                    runs=10,
+                                    lr=.0001, momentum=.9, batch_size=32,
+                                    patience=2, max_epochs=100,
+                                    verbose=0):
+    """perform diversity experiment for a range of train sizes (subsampled variant)"""
+
+    # normalize pixel values
+    x_train = x_train / 255.
+    x_test = x_test / 255.
+
+    results_df = []
+
+    for train_size in train_sizes:
+        print(f'performing experiment for train size={train_size}')
+
+        sub_df = diversity_experiment_single_subsampled(x_train, y_train,
+                                                        x_gist,
+                                                        x_test, y_test,
+                                                        train_size=train_size, val_size=val_size, runs=runs,
+                                                        lr=lr, momentum=momentum, batch_size=batch_size,
+                                                        patience=patience, max_epochs=max_epochs,
+                                                        verbose=verbose)
         results_df.append(sub_df)
 
     results_df = pd.concat(results_df)
