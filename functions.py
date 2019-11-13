@@ -103,6 +103,35 @@ def split_dataset_diversity(images, gist_features, train_size=50, val_size=1000)
 def split_dataset_diversity_subsample(images, gist_features, train_size=50, val_size=1000):
     """splits a subsampled dataset into similar, diverse, random, and validation sets"""
 
+    n = gist_features.shape[0]
+    indices = np.arange(n)
+    np.random.shuffle(indices)
+
+    # set aside validation set
+    val_ind = indices[0:val_size]
+    val_images = images[val_ind, :, :, :]
+    train_ind = indices[val_size:n]
+    train_features = gist_features[train_ind, :]
+    train_images = images[train_ind, :, :, :]
+
+    # sample a random training subset
+    # and sample a subset to divide into similar vs diverse training subsets
+    indices = np.arange(train_features.shape[0])
+    np.random.shuffle(indices)
+    diverse_similar_ind = indices[0:(2 * train_size)]
+    random_ind = indices[(2 * train_size):(3 * train_size)]
+    diverse_similar_features = train_features[diverse_similar_ind, :]
+    diverse_similar_images = train_images[diverse_similar_ind, :, :, :]
+    random_images = train_images[random_ind, :, :, :]
+
+    # divide subset into similar/diverse
+    _, diverse_ind = similar_or_diverse(diverse_similar_features, train_size, 'diverse')
+    diverse_images = diverse_similar_images[diverse_ind, :, :, :]
+    similar_images = np.delete(diverse_similar_images, diverse_ind, 0)
+
+    return diverse_images, similar_images, random_images, val_images
+
+
 
 def initialize_vgg16(input_shape, n_classes, lr=.001, momentum=.9):
     """initialize vgg16 with imagenet weights"""
@@ -365,7 +394,7 @@ def diversity_experiment_single_with_constrained_val(x_train, y_train,
     for run in np.arange(runs):
         # construct the training sets
         x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, _, _ = \
-            construct_train_val_by_class(x_train, y_train, x_gist, train_size, 0)
+            construct_train_val_by_class(x_train, y_train, x_gist, train_size * 2, 0)
 
         # set aside some training data as validation data
         x_diverse_train, y_diverse_train, x_diverse_val, y_diverse_val = \
