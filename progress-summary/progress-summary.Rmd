@@ -53,7 +53,7 @@ been observed that performance gains can continue to scale with the training
 set size, even into the billions \citep{mahajan2018exploring}. 
 
 However, obtaining large datasets for deep models is not always feasible. 
-Manually labelling thousands or even millions of images can be a tedious, 
+Manually labelling thousands or even millions of images can be tedious, 
 time-consuming, and expensive \citep{Christensen_2016}.
 Some proposed and empirically verified solutions to the limited data problem
 include using a smaller network with fewer parameters, starting with a
@@ -407,7 +407,7 @@ subset.
 Another possible way to address the second issue is by projecting the embedded 
 points into a lower dimensional space before sampling. 
 
-***[insert table of different methods here]***
+***[insert table of different sampling methods here]***
 
 ```{r}
 cifar10.val.from.train.path <- file.path('~/dev/da-project',
@@ -476,6 +476,8 @@ sample size increases, the diverse sampling method exhausts the set of outliers
 and begins to sample more typical images. Previous studies show that 
 classification models tend to perform better when outliers or atypical 
 observations are removed from the training set. 
+
+### Training Set Measures
 
 ## Other Related Work
 
