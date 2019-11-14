@@ -250,14 +250,14 @@ cifar.small.df <- readr::read_csv(cifar10.small.path)
 mnist.small.df <- readr::read_csv(mnist.small.path)
 ```
 
-```{r mnist, fig.cap = 'Diversity experiment results on MNIST data.'}
+```{r mnist, fig.width = 5, fig.cap = 'Diversity experiment results on MNIST data.'}
 mnist.df %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
   ggplot() + 
   # scale_y_log10() + 
-  scale_x_log10() + 
+  # scale_x_log10() + 
   scale_colour_brewer(palette = 'Set1') + 
   geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
   geom_errorbar(aes(x = train_size, 
@@ -267,10 +267,12 @@ mnist.df %>%
                 width = .03) + 
   labs(x = 'training set size per class', 
        y = 'test accuracy', 
-       colour = 'train set type')
+       colour = 'train set type') + 
+  scale_x_continuous(breaks = unique(mnist.df$train_size), 
+                     trans = 'log10')
 ```
 
-```{r cifar10, fig.cap = 'Diversity experiment results on CIFAR-10 data.'}
+```{r cifar10, fig.width = 5, fig.cap = 'Diversity experiment results on CIFAR-10 data.'}
 cifar.df %>% 
   # dplyr::filter(accuracy > .1) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
@@ -278,7 +280,7 @@ cifar.df %>%
                    sd.acc = sd(accuracy)) %>% 
   ggplot() + 
   # scale_y_log10() + 
-  scale_x_log10() +
+  # scale_x_log10() +
   scale_colour_brewer(palette = 'Set1') + 
   geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
   geom_errorbar(aes(x = train_size, 
@@ -288,7 +290,9 @@ cifar.df %>%
                 width = .03) + 
   labs(x = 'training set size per class', 
        y = 'test accuracy', 
-       colour = 'train set type')
+       colour = 'train set type') + 
+  scale_x_continuous(breaks = unique(cifar.df$train_size), 
+                     trans = 'log10')
 ```
 
 Here, our results suggest no significant relationship between image diversity
@@ -315,10 +319,11 @@ mnist.small.df %>%
                     ymin = mean.acc - 2 * sd.acc, 
                     ymax = mean.acc + 2 * sd.acc, 
                     colour = train_set_type),
-                width = 1) + 
+                width = 2) + 
   labs(x = 'training set size per class', 
        y = 'test accuracy', 
-       colour = 'train set type')
+       colour = 'train set type') + 
+  scale_x_continuous(breaks = unique(mnist.small.df$train_size))
 ```
 
 ```{r cifar_small, fig.cap = 'Diversity experiment results on small CIFAR-10 data.'}
@@ -336,10 +341,11 @@ cifar.small.df %>%
                     ymin = mean.acc - 2 * sd.acc, 
                     ymax = mean.acc + 2 * sd.acc, 
                     colour = train_set_type),
-                width = 1) + 
+                width = 2) + 
   labs(x = 'training set size per class', 
        y = 'test accuracy', 
-       colour = 'train set type')
+       colour = 'train set type') + 
+  scale_x_continuous(breaks = unique(cifar.small.df$train_size))
 ```
 
 ### Alternative Methods for Training Set Selection
@@ -477,8 +483,6 @@ and begins to sample more typical images. Previous studies show that
 classification models tend to perform better when outliers or atypical 
 observations are removed from the training set. 
 
-### Training Set Measures
-
 ## Other Related Work
 
 \citep{wang2018data} proposed a two-round training approach to better fit 
@@ -505,7 +509,10 @@ randomly sampled subsets of the same size.
 \citep{Ferreira2016UnsupervisedES} proposed a maximum entropy based sampling 
 method for selecting training data. 
 
-\citep{Wilson1972AsymptoticPO}
+\citep{Wilson1972AsymptoticPO} demonstrated that edited $k$-nearest neighbors 
+classifiers outperform regular "unedited" $k$-nearest neighbors classifiers. 
+This suggests that outliers in the training sample are detrimental to model 
+training. 
 
 Based on the literature, training set selection methods can be classified as 
 denoising/filtering methods or as diversification methods. Denoising and 
@@ -514,19 +521,36 @@ diversification methods aim to make training observations as different from
 each other as possible. These two ideas appear to be at odds with one another. 
 There also doesn't appear to be much literature on how to apply such methods on 
 image data, as they assume that the data can be naturally represented in 
-Euclidean space (e.g., as a data matrix). 
+Euclidean space (i.e., as a data matrix). However, this does provide some sense 
+of how we can "construct" a good training sample: Given a "good" embedding of 
+images such that the embedding space can be separated by some set of manifolds 
+into regions that correspond to each class, for each class, we should choose 
+a training sample that fills up that class' region without crossing over into 
+any other regions. 
+
+One thing that is not clear is how this relates to the data collection process. 
+Most previous studies sample from a pool of preexisting images, but in a 
+more practical scenario, the data collection process would involve creating 
+new images (e.g., by taking photographs). 
 
 # New Proposed Methods
+
+## Training Set Measures
+
+One question we would like to answer is whether we can define a measure or 
+statistic on a training sample that correlates with model performance. 
+
+## Methods Around Sampling from a Model-Agnostic Embedding
 
 ## Transfer Learning-Based Methods
 
 ## Active Learning-Based Methods
 
-## Methods Around Sampling from a Model-Agnostic Embedding
+## Methods Leveraging Extra Information
 
 # Results
 
-# Conclusion
+# Conclusions and Next Steps
 
 \newpage
 
