@@ -708,7 +708,7 @@ cifar10.clustered.df %>%
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
   ggplot() + 
-  scale_x_log10() + 
+  # scale_x_log10() + 
   # scale_y_log10() + 
   geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
   scale_colour_brewer(palette = 'Set1') + 
@@ -741,13 +741,16 @@ cifar10.clustered.edited.df %>%
        colour = NULL)
 ```
 
+* One cluster per image
+* Using clustering to remove outliers
+
 ## Transfer Learning-Based Methods
 
 * Using an embedding from the last layer of another CNN model
 
 ## Active Learning-Based Methods
 
-* Embedding based on CNN fit on a small subset
+* Pre-training on a small subset to obtain an embedding
 
 ## Methods Leveraging Extra Information
 
