@@ -408,7 +408,7 @@ the "validation from training" sampling method. We can address the
 second issue by first taking a random sample of size $2 n_{sub}$ and then 
 dividing that sample into diverse and similar subsets by choosing the diverse 
 subset according to maximal distance and setting the remainder as the similar 
-subset. 
+subset. We will call this the "subset before sampling training" sampling method.
 
 Another possible way to address the second issue is by projecting the embedded 
 points into a lower dimensional space before sampling. 
@@ -426,7 +426,7 @@ cifar10.val.from.train.df <- readr::read_csv(cifar10.val.from.train.path)
 mnist.val.from.train.df <- readr::read_csv(mnist.val.from.train.path)
 ```
 
-```{r mnist_val_constrained, fig.cap = 'Diversity on MNIST data, using the "validation from training" sampling method.'}
+```{r mnist_val_constrained, fig.cap = 'Diversity experiment on MNIST data, using the "validation from training" sampling method.'}
 mnist.val.from.train.df %>% 
   # dplyr::filter(accuracy > .15) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
@@ -446,7 +446,7 @@ mnist.val.from.train.df %>%
        colour = NULL)
 ```
 
-```{r cifar10_val_constrained, fig.cap = 'Diversity on CIFAR-10 data, using the "validation from training" sampling method.'}
+```{r cifar10_val_constrained, fig.cap = 'Diversity experiment on CIFAR-10 data, using the "validation from training" sampling method.'}
 cifar10.val.from.train.df %>% 
   # dplyr::filter(accuracy > .15) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
@@ -483,6 +483,38 @@ and begins to sample more typical images. Previous studies show that
 classification models tend to perform better when outliers or atypical 
 observations are removed from the training set. 
 
+```{r}
+cifar10.train.from.subset.path <- file.path(
+  '~/dev/da-project',
+  'subset-data-before-sampling-training-sets', 
+  'cifar10-subsampled-training-results.csv')
+cifar10.train.from.subset.df <- readr::read_csv(cifar10.train.from.subset.path)
+```
+
+```{r cifar10_train_from_subset, fig.cap = 'Diversity experiment on CIFAR-10 data using the "subset before sampling training" sampling method.'}
+cifar10.train.from.subset.df %>% 
+  # dplyr::filter(accuracy > .15) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL)
+```
+
+Fig. \ref{fig:cifar10_train_from_subset} shows that the diverse, similar, and 
+random training samples using the "subset before sampling training" sampling 
+method results in no significant differences in model performance. 
+
 ## Other Related Work
 
 \citep{wang2018data} proposed a two-round training approach to better fit 
@@ -507,7 +539,8 @@ each round. The study demonstrates that this method outperforms training on
 randomly sampled subsets of the same size. 
 
 \citep{Ferreira2016UnsupervisedES} proposed a maximum entropy based sampling 
-method for selecting training data. 
+method for selecting training data, given that the inputs are of the form 
+$x_i \in \mathbb{R}^d$.
 
 \citep{Wilson1972AsymptoticPO} demonstrated that edited $k$-nearest neighbors 
 classifiers outperform regular "unedited" $k$-nearest neighbors classifiers. 
@@ -540,7 +573,86 @@ new images (e.g., by taking photographs).
 One question we would like to answer is whether we can define a measure or 
 statistic on a training sample that correlates with model performance. 
 
-## Methods Around Sampling from a Model-Agnostic Embedding
+## Edited Training Data
+
+The data editing method described by \cite{Wilson1972AsymptoticPO} is as 
+follows:
+
+1. Given a training set $\mathcal{X}$ such that $x_i \in \mathbb{R}^d$, 
+$0 < i \leq n$, for each $i$, construct a $k$NN model from 
+$\mathcal{X} \setminus \{x_i\}$ to obtain $\hat{y}_i$.
+2. For each $i$, if $\hat{y}_i \neq y_i$, set 
+$\mathcal{X} \leftarrow \mathcal{X} \setminus \{x_i\}$, to obtain the edited 
+training set $\tilde{\mathcal{X}}$.
+3. Construct a $k$NN model from $\tilde{\mathcal{X}}$.
+
+The results of this paper demonstrate that models constructed in this way tend 
+to outperform models constructed using the entire training set. The intuition 
+behind this result is that the training set editing method removes per-class 
+outliers to construct smoother decision boundaries. 
+
+```{r}
+cifar10.edited.path <- file.path(
+  '~/dev/da-project',
+  'edited-training-data', 
+  'cifar10-edited-training-results.csv')
+cifar10.edited.df <- readr::read_csv(cifar10.edited.path)
+```
+
+```{r cifar10_edited, fig.cap = 'Diversity experiment on CIFAR-10 data, drawing from an edited dataset.'}
+cifar10.edited.df %>% 
+  # dplyr::filter(accuracy > .15) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL)
+```
+
+```{r edited_vs_unedited, fig.cap = 'Impact of editing the training data prior to drawing a "diverse" sample'}
+cifar10.edited.df %>% 
+  dplyr::filter(train_set_type == 'diverse') %>% 
+  dplyr::inner_join(cifar10.val.from.train.df, 
+                    by = c('train_size', 'train_set_type')) %>%
+  dplyr::group_by(train_size) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy.y), 
+                   mean.acc.edited = mean(accuracy.x),
+                   sd.acc = sd(accuracy.y), 
+                   sd.acc.edited = sd(accuracy.x)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = 'not edited')) + 
+  geom_line(aes(x = train_size, y = mean.acc.edited, colour = 'edited')) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc,
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = 'not edited')) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc.edited - 2 * sd.acc.edited, 
+                    ymax = mean.acc.edited + 2 * sd.acc.edited, 
+                    colour = 'edited')) + 
+  labs(x = 'training set size per class', y = 'test accuracy', 
+       colour = NULL)
+```
+
+**[also try random sampling from the edited data]**
+
+## Clustering
+
+
+
+## Variational Autoencoders
 
 ## Transfer Learning-Based Methods
 
