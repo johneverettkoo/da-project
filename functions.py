@@ -237,6 +237,59 @@ def construct_train_val_by_class_subsampled(x_train, y_train, x_gist,
     return x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, x_val, y_val
 
 
+def construct_train_val_by_class_edited(x_train, y_train, x_gist, remove_ind,
+                                        train_size=100, val_size=1000):
+    """construct diverse, similar, and random subsets of training data with editing"""
+
+    # construct an edited training set
+    x_train_edited = np.delete(x_train, remove_ind, 0)
+    y_train_edited = np.delete(y_train, remove_ind, 0)
+    x_gist_edited = np.delete(x_gist, remove_ind, 0)
+
+    # what are the unique classes and how many are there
+    unique_classes = np.unique(y_train)
+    n_classes = len(unique_classes)
+
+    # prepare the training and validation data
+    y_diverse = np.repeat(unique_classes, train_size).reshape(n_classes * train_size, 1)
+    y_similar = np.repeat(unique_classes, train_size).reshape(n_classes * train_size, 1)
+    y_random = np.repeat(unique_classes, train_size).reshape(n_classes * train_size, 1)
+    y_val = np.repeat(unique_classes, val_size).reshape(n_classes * val_size, 1)
+    x_diverse = []
+    x_similar = []
+    x_random = []
+    x_val = []
+
+    # split the data for each class to maintain class balance
+    for cl in unique_classes:
+        # get the images and gist features for this class from both edited and unedited sets
+        x_cl = x_train[y_train[:, 0] == cl, :, :, :]
+        x_cl_g = x_gist[y_train[:, 0] == cl, :]
+        x_cl_edit = x_train_edited[y_train_edited[:, 0] == cl, :, :, :]
+        x_cl_g_edit = x_gist_edited[y_train_edited[:, 0] == cl, :]
+
+        # construct the training sets and validation set for this class
+        _, x_cl_sim, x_cl_rand, x_cl_val = \
+            split_dataset_diversity(x_cl, x_cl_g, train_size, val_size)
+        _, x_cl_div_ind = similar_or_diverse(x_cl_g_edit, train_size, 'diverse')
+        x_cl_div = x_cl_edit[x_cl_div_ind, :, :, :]
+
+        # save
+        x_diverse.append(x_cl_div)
+        x_similar.append(x_cl_sim)
+        x_random.append(x_cl_rand)
+        x_val.append(x_cl_val)
+
+    # reshape to valid numpy arrays
+    x_diverse = np.concatenate(x_diverse, 0)
+    x_similar = np.concatenate(x_similar, 0)
+    x_random = np.concatenate(x_random, 0)
+    x_val = np.concatenate(x_val, 0)
+
+    # return
+    return x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, x_val, y_val
+
+
 def experiment(x_train, y_train, x_val, y_val, x_test, y_test,
                lr=.0001, momentum=.9, batch_size=32,
                patience=2, max_epochs=100, verbose=1):
@@ -612,6 +665,114 @@ def diversity_experiment_subsampled(x_train, y_train,
                                                         lr=lr, momentum=momentum, batch_size=batch_size,
                                                         patience=patience, max_epochs=max_epochs,
                                                         verbose=verbose)
+        results_df.append(sub_df)
+
+    results_df = pd.concat(results_df)
+
+    return results_df
+
+
+def diversity_experiment_single_edited(x_train, y_train,
+                                       x_gist,
+                                       x_test, y_test,
+                                       remove_ind,
+                                       train_size=100, val_prop=.5,
+                                       runs=10,
+                                       lr=.001, momentum=.9, batch_size=32,
+                                       patience=2, max_epochs=100,
+                                       verbose=0):
+    """perform diversity experiment for a single train size using edited data"""
+
+    # run experiments for the three datasets and repeat
+    diverse_accuracies = np.empty(runs)
+    diverse_losses = np.empty(runs)
+    similar_accuracies = np.empty(runs)
+    similar_losses = np.empty(runs)
+    random_accuracies = np.empty(runs)
+    random_losses = np.empty(runs)
+    for run in np.arange(runs):
+        # construct the training sets
+        x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, _, _ = \
+            construct_train_val_by_class_edited(x_train, y_train, x_gist, remove_ind, train_size * 2, 0)
+
+        # set aside some training data as validation data
+        x_diverse_train, y_diverse_train, x_diverse_val, y_diverse_val = \
+            split_train_val(x_diverse, y_diverse, val_prop)
+        x_similar_train, y_similar_train, x_similar_val, y_similar_val = \
+            split_train_val(x_similar, y_similar, val_prop)
+        x_random_train, y_random_train, x_random_val, y_random_val = \
+            split_train_val(x_random, y_random, val_prop)
+
+        # run the three experiments
+        diverse_accuracy, diverse_loss = experiment(x_diverse_train, y_diverse_train,
+                                                    x_diverse_val, y_diverse_val,
+                                                    x_test, y_test,
+                                                    lr, momentum, batch_size,
+                                                    patience, max_epochs,
+                                                    verbose)
+        # print(f'diverse accuracy: {diverse_accuracy}')
+        similar_accuracy, similar_loss = experiment(x_similar_train, y_similar_train,
+                                                    x_similar_val, y_similar_val,
+                                                    x_test, y_test,
+                                                    lr, momentum, batch_size,
+                                                    patience, max_epochs,
+                                                    verbose)
+        # print(f'similar accuracy: {similar_accuracy}')
+        random_accuracy, random_loss = experiment(x_random_train, y_random_train,
+                                                  x_random_val, y_random_val,
+                                                  x_test, y_test,
+                                                  lr, momentum, batch_size,
+                                                  patience, max_epochs,
+                                                  verbose)
+        diverse_accuracies[run] = diverse_accuracy
+        diverse_losses[run] = diverse_loss
+        similar_accuracies[run] = similar_accuracy
+        similar_losses[run] = similar_loss
+        random_accuracies[run] = random_accuracy
+        random_losses[run] = random_loss
+
+    # compile results into dataframe
+    losses = np.concatenate([diverse_losses, similar_losses, random_losses])
+    accuracies = np.concatenate([diverse_accuracies, similar_accuracies, random_accuracies])
+    train_sets = np.concatenate([np.repeat('diverse', runs),
+                                 np.repeat('similar', runs),
+                                 np.repeat('random', runs)])
+    results_df = pd.DataFrame({'train_size': np.repeat(train_size, runs * 3),
+                               'train_set_type': train_sets,
+                               'loss': losses,
+                               'accuracy': accuracies})
+
+    return results_df
+
+
+def diversity_experiment_edited(x_train, y_train,
+                                x_gist,
+                                x_test, y_test,
+                                remove_ind,
+                                train_sizes,
+                                val_prop,
+                                runs=10,
+                                lr=.001, momentum=.9, batch_size=32,
+                                patience=2, max_epochs=100,
+                                verbose=0):
+    """perform diversity experiment for a range of train sizes and nonrandom sampled validation set"""
+
+    # normalize pixel values
+    x_train = x_train / 255.
+    x_test = x_test / 255.
+
+    results_df = []
+
+    for train_size in train_sizes:
+        print(f'performing experiment for train size = {train_size}')
+        sub_df = diversity_experiment_single_edited(x_train, y_train,
+                                                    x_gist,
+                                                    x_test, y_test,
+                                                    remove_ind,
+                                                    train_size=train_size, val_prop=val_prop, runs=runs,
+                                                    lr=lr, momentum=momentum, batch_size=batch_size,
+                                                    patience=patience, max_epochs=max_epochs,
+                                                    verbose=verbose)
         results_df.append(sub_df)
 
     results_df = pd.concat(results_df)
