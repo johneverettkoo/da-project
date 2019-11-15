@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import spatial
 from sklearn.metrics.pairwise import pairwise_distances
+from sklearn import cluster
 import pandas as pd
 import gist
 from keras import models, layers, optimizers
@@ -170,8 +171,8 @@ def construct_train_val_by_class(x_train, y_train, x_gist,
     # split the data for each class to maintain class balance
     for cl in unique_classes:
         # get the images and gist features for this class
-        x_cl = x_train[y_train[:, 0] == cl, :, :, :]
-        x_cl_g = x_gist[y_train[:, 0] == cl, :]
+        x_cl = x_train[y_train.flatten() == cl, :, :, :]
+        x_cl_g = x_gist[y_train.flatten() == cl, :]
 
         # construct the training sets and validation set for this class
         x_cl_div, x_cl_sim, x_cl_rand, x_cl_val = \
@@ -490,7 +491,7 @@ def diversity_experiment_single_with_constrained_val(x_train, y_train,
     for run in np.arange(runs):
         # construct the training sets
         x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, _, _ = \
-            construct_train_val_by_class(x_train, y_train, x_gist, train_size * 2, 0)
+            construct_train_val_by_class(x_train, y_train, x_gist, int(train_size / val_prop), 0)
 
         # set aside some training data as validation data
         x_diverse_train, y_diverse_train, x_diverse_val, y_diverse_val = \
@@ -778,3 +779,146 @@ def diversity_experiment_edited(x_train, y_train,
     results_df = pd.concat(results_df)
 
     return results_df
+
+
+def diversity_experiment_kmeans(x_train, y_train,
+                                x_gist,
+                                x_test, y_test,
+                                train_sizes,
+                                edit_indices=None,
+                                n_clust=5,
+                                val_prop=.5,
+                                runs=10,
+                                lr=.001, momentum=.9, batch_size=32,
+                                patience=2, max_epochs=100,
+                                n_jobs=4,
+                                verbose=0):
+    """experiment where samples are drawn according to kmeans clustering"""
+
+    # remove outliers
+    if edit_indices is not None:
+        x_train = np.delete(x_train, edit_indices, 0)
+        y_train = np.delete(y_train, edit_indices, 0)
+        x_gist = np.delete(x_gist, edit_indices, 0)
+
+    # normalize pixel values
+    x_train = x_train / 255.
+    x_test = x_test / 255.
+
+    # number of classes
+    k = len(np.unique(y_train))
+
+    random_accs = []
+    random_losses = []
+    random_by_cluster_accs = []
+    random_by_cluster_losses = []
+    diverse_by_cluster_accs = []
+    diverse_by_cluster_losses = []
+
+    # assign clusters by class
+    x_train, y_train, x_gist, clusters = assign_clusters_by_class(x_train, y_train, x_gist, n_clust, n_jobs)
+
+    for train_size in train_sizes:
+        print(f'performing experiment for train size = {train_size}')
+        y = np.repeat(np.arange(k), int(train_size / val_prop)).reshape(k * int(train_size / val_prop), 1)
+        for _ in np.arange(runs):
+            # draw samples by method
+            x_random = []
+            x_random_by_cluster = []
+            x_diverse_by_cluster = []
+            for cls in np.arange(k):
+                x_cls = x_train[y_train.flatten() == cls, :, :, :]
+                gist_cls = x_gist[y_train.flatten() == cls, :]
+                clust_cls = clusters[y_train.flatten() == cls]
+
+                x_cls_random = x_cls[np.random.choice(x_cls.shape[0],
+                                                      int(train_size / val_prop),
+                                                      replace=False),
+                                     :, :, :]
+
+                x_cls_clust_diverse, _, _, _, x_cls_clust_random, _, _, _ = \
+                    construct_train_val_by_class(x_cls, clust_cls, gist_cls, int(train_size / val_prop / n_clust), 0)
+
+                x_random.append(x_cls_random)
+                x_random_by_cluster.append(x_cls_clust_random)
+                x_diverse_by_cluster.append(x_cls_clust_diverse)
+            x_random = np.concatenate(x_random, 0)
+            x_random_by_cluster = np.concatenate(x_random_by_cluster, 0)
+            x_diverse_by_cluster = np.concatenate(x_diverse_by_cluster, 0)
+
+            # split each sample into train/val
+            x_random_train, y_random_train, x_random_val, y_random_val = split_train_val(x_random, y, val_prop)
+            x_random_by_cluster_train, y_random_by_cluster_train, x_random_by_cluster_val, y_random_by_cluster_val = \
+                split_train_val(x_random_by_cluster, y, val_prop)
+            x_diverse_by_cluster_train, y_diverse_by_cluster_train, \
+                x_diverse_by_cluster_val, y_diverse_by_cluster_val = \
+                split_train_val(x_diverse_by_cluster, y, val_prop)
+
+            # fit models and get test metrics
+            random_acc, random_loss = experiment(x_random_train, y_random_train,
+                                                 x_random_val, y_random_val,
+                                                 x_test, y_test,
+                                                 lr, momentum, batch_size,
+                                                 patience, max_epochs,
+                                                 verbose)
+            random_by_cluster_acc, random_by_cluster_loss = experiment(x_random_by_cluster_train,
+                                                                       y_random_by_cluster_train,
+                                                                       x_random_by_cluster_val,
+                                                                       y_random_by_cluster_val,
+                                                                       x_test, y_test,
+                                                                       lr, momentum, batch_size,
+                                                                       patience, max_epochs,
+                                                                       verbose)
+            diverse_by_cluster_acc, diverse_by_cluster_loss = experiment(x_diverse_by_cluster_train,
+                                                                         y_diverse_by_cluster_train,
+                                                                         x_diverse_by_cluster_val,
+                                                                         y_diverse_by_cluster_val,
+                                                                         x_test, y_test,
+                                                                         lr, momentum, batch_size,
+                                                                         patience, max_epochs,
+                                                                         verbose)
+            random_accs.append(random_acc)
+            random_losses.append(random_loss)
+            random_by_cluster_accs.append(random_by_cluster_acc)
+            random_by_cluster_losses.append(random_by_cluster_loss)
+            diverse_by_cluster_accs.append(diverse_by_cluster_acc)
+            diverse_by_cluster_losses.append(diverse_by_cluster_loss)
+
+    results_df = pd.DataFrame({'train_size': np.repeat(np.tile(train_sizes, 3), runs),
+                               'train_set_type': np.repeat(['random',
+                                                            'random by cluster',
+                                                            'diverse by cluster'],
+                                                           runs * len(train_sizes)),
+                               'accuracy': random_accs + random_by_cluster_accs + diverse_by_cluster_accs,
+                               'loss': random_losses + random_by_cluster_losses + diverse_by_cluster_losses})
+    return results_df
+
+
+def assign_clusters_by_class(x_train, y_train, x_gist, n_clusters=5, n_jobs=4):
+    """split the data by class, then cluster each class"""
+
+    classes = np.unique(y_train)
+
+    x_out = []
+    y_out = []
+    gist_out = []
+    clust_out = []
+
+    for cls in classes:
+        x_cls = x_train[y_train.flatten() == cls, :, :, :]
+        x_gist_cls = x_gist[y_train.flatten() == cls, :]
+
+        kmeans = cluster.KMeans(n_clusters=n_clusters, n_jobs=n_jobs).fit(x_gist_cls)
+
+        x_out.append(x_cls)
+        y_out.append(np.repeat(cls, x_cls.shape[0]))
+        gist_out.append(x_gist_cls)
+        clust_out.append(kmeans.labels_)
+
+    x_out = np.concatenate(x_out, 0)
+    y_out = np.concatenate(y_out, 0)
+    y_out = y_out.reshape(len(y_out), 1)
+    gist_out = np.concatenate(gist_out, 0)
+    clust_out = np.concatenate(clust_out, 0)
+
+    return x_out, y_out, gist_out, clust_out
