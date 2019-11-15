@@ -922,3 +922,101 @@ def assign_clusters_by_class(x_train, y_train, x_gist, n_clusters=5, n_jobs=4):
     clust_out = np.concatenate(clust_out, 0)
 
     return x_out, y_out, gist_out, clust_out
+
+
+def diversity_experiment_one_obs_per_cluster(x_train, y_train,
+                                             x_gist,
+                                             x_test, y_test,
+                                             train_sizes,
+                                             edit_indices=None,
+                                             val_prop=.5,
+                                             runs=10,
+                                             lr=.001, momentum=.9, batch_size=32,
+                                             patience=2, max_epochs=100,
+                                             n_jobs=4,
+                                             verbose=0):
+    """experiment where observations are each drawn from their own clusters"""
+
+    # remove outliers
+    if edit_indices is not None:
+        x_train = np.delete(x_train, edit_indices, 0)
+        y_train = np.delete(y_train, edit_indices, 0)
+        x_gist = np.delete(x_gist, edit_indices, 0)
+
+    # normalize pixel values
+    x_train = x_train / 255.
+    x_test = x_test / 255.
+
+    # number of classes
+    k = len(np.unique(y_train))
+
+    random_accs = []
+    random_losses = []
+    by_cluster_accs = []
+    by_cluster_losses = []
+    for train_size in train_sizes:
+        print(f'performing experiment for train size = {train_size}')
+        # one cluster per draw
+        x_train_clust, y_train_clust, gist_clust, clusters = \
+            assign_clusters_by_class(x_train, y_train, x_gist, train_size, n_jobs)
+
+        y = np.repeat(np.arange(k), int(train_size / val_prop)).reshape(k * int(train_size / val_prop), 1)
+        for _ in np.arange(runs):
+            # draw samples by method
+            x_random = []
+            x_cluster = []
+            for cls in np.arange(k):
+                x_cls = x_train[y_train.flatten() == cls, :, :, :]
+                clust_cls = clusters[y_train.flatten() == cls]
+
+                # draw random sample
+                x_cls_random = x_cls[np.random.choice(x_cls.shape[0],
+                                                      int(train_size / val_prop),
+                                                      replace=False),
+                                     :, :, :]
+
+                # draw one sample per cluster
+                x_cls_cluster = []
+                for clust in np.arange(train_size):
+                    x_cluster_cls = x_cls[clust_cls == clust, :, :, :]
+                    x_cls_cluster.append(x_cluster_cls[np.random.choice(x_cluster_cls.shape[0],
+                                                                        int(1 / val_prop),
+                                                                        replace=False),
+                                                       :, :, :])
+                x_cls_cluster = np.concatenate(x_cls_cluster, 0)
+
+                x_random.append(x_cls_random)
+                x_cluster.append(x_cls_cluster)
+            x_random = np.concatenate(x_random, 0)
+            x_cluster = np.concatenate(x_cluster, 0)
+
+            # split each sample into train/val
+            x_random_train, y_random_train, x_random_val, y_random_val = split_train_val(x_random, y, val_prop)
+            x_cluster_train, y_cluster_train, x_cluster_val, y_cluster_val = split_train_val(x_cluster, y, val_prop)
+
+            # fit models and get test metrics
+            random_acc, random_loss = experiment(x_random_train, y_random_train,
+                                                 x_random_val, y_random_val,
+                                                 x_test, y_test,
+                                                 lr, momentum, batch_size,
+                                                 patience, max_epochs,
+                                                 verbose)
+            cluster_acc, cluster_loss = experiment(x_cluster_train, y_cluster_train,
+                                                   x_cluster_val, y_cluster_val,
+                                                   x_test, y_test,
+                                                   lr, momentum, batch_size,
+                                                   patience, max_epochs,
+                                                   verbose)
+            random_accs.append(random_acc)
+            random_losses.append(random_loss)
+            by_cluster_accs.append(cluster_acc)
+            by_cluster_losses.append(cluster_loss)
+
+    results_df = pd.DataFrame({'train_size': np.repeat(np.tile(train_sizes, 2), runs),
+                               'train_set_type': np.repeat(['random',
+                                                            'one image per cluster'],
+                                                           runs * len(train_sizes)),
+                               'accuracy': random_accs + by_cluster_accs,
+                               'loss': random_losses + by_cluster_losses})
+
+    return results_df
