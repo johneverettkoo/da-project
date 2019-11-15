@@ -591,6 +591,31 @@ to outperform models constructed using the entire training set. The intuition
 behind this result is that the training set editing method removes per-class 
 outliers to construct smoother decision boundaries. 
 
+The three training samples in this section are constructed as follows:
+
+1. Draw a random sample from the training data.
+2. Draw a "similar" sample from the training data.
+3. Edit the training data using Wilson's data editing method, then draw a 
+"diverse" sample from the edited training data.
+
+The validation sets are subsetted from the three training samples after they 
+are drawn (instead of drawing randomly from the original training set).
+
+The intuition here is that the diverse sampling method may favor drawing 
+"outliers", but we still want to impose diversity on the training sample, so 
+the hope is that the data editing method will remove those outliers and the 
+diverse sampling method can draw from a "clean" pool of images.
+
+In our data editing method, we first embedded the images using GIST features, 
+then used principal component analysis to reduce the dimensionality (using 
+enough components to obtain 80\% explained variance). Then we constructed a 
+$5$-NN model on the projected embedding to determine which images to remove. 
+
+Fig. \ref{fig:cifar10_edited} suggests that diverse sampling from an edited 
+set results in worse model performance than just drawing a random sample. 
+Fig. \ref{fig:edited_vs_unedited} shows the impact of editing before drawing a 
+diverse sample.
+
 ```{r}
 cifar10.edited.path <- file.path(
   '~/dev/da-project',
@@ -650,15 +675,79 @@ cifar10.edited.df %>%
 
 ## Clustering
 
+We might be able to think of each class as having "subclasses". For example, 
+one of the classes in the CIFAR-10 dataset is "dog", but we can further 
+subdivide that into different breeds of dogs (or groups of breeds of dogs). It 
+might be beneficial to have at least a couple representative images from each 
+subclass. The sampling procedures tested in this section are described as 
+follows: 
 
+1. Start with an overall training set. Optionally, perform Wilson editing to 
+remove outliers.
+2. Draw a random sample ("random" set).
+3. For each class, perform $k$-means clustering. Then draw a per-cluster 
+random sample ("random by cluster" set) and a per-cluster diverse sample 
+("diverse by cluster" set). 
 
-## Variational Autoencoders
+Again, we split validation sets from each of the training sets sampled by this 
+procedure.
+
+```{r}
+cifar10.clustered.path <- 
+  '~/dev/da-project/kmeans-sampling/cifar10-kmeans-results.csv'
+cifar10.clustered.df <- readr::read_csv(cifar10.clustered.path)
+cifar10.clustered.edited.path <- 
+  '~/dev/da-project/kmeans-sampling/cifar10-kmeans-edited-results.csv'
+cifar10.clustered.edited.df <- readr::read_csv(cifar10.clustered.edited.path)
+```
+
+```{r cifar10_clustered, fig.cap = 'Diversity experiment on CIFAR-10 data, drawing from clusters.', fig.width = 4.5}
+cifar10.clustered.df %>% 
+  # dplyr::filter(accuracy > .15) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL)
+```
+
+```{r cifar10_clustered_edited, fig.cap = 'Diversity experiment on CIFAR-10 data, drawing from clusters. The overall training set was edited prior to sampling.'}
+cifar10.clustered.edited.df %>% 
+  # dplyr::filter(accuracy > .15) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  # scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - 2 * sd.acc, 
+                    ymax = mean.acc + 2 * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL)
+```
 
 ## Transfer Learning-Based Methods
 
 ## Active Learning-Based Methods
 
 ## Methods Leveraging Extra Information
+
+## Variational Autoencoders
 
 # Results
 
