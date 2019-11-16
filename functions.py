@@ -150,7 +150,7 @@ def initialize_vgg16(input_shape, n_classes, lr=.001, momentum=.9):
     return model
 
 
-def construct_train_val_by_class(x_train, y_train, x_gist,
+def construct_train_val_by_class(x_train, y_train, gist_train,
                                  train_size=100, val_size=1000):
     """construct diverse, similar, and random subsets of training data"""
 
@@ -172,7 +172,7 @@ def construct_train_val_by_class(x_train, y_train, x_gist,
     for cl in unique_classes:
         # get the images and gist features for this class
         x_cl = x_train[y_train.flatten() == cl, :, :, :]
-        x_cl_g = x_gist[y_train.flatten() == cl, :]
+        x_cl_g = gist_train[y_train.flatten() == cl, :]
 
         # construct the training sets and validation set for this class
         x_cl_div, x_cl_sim, x_cl_rand, x_cl_val = \
@@ -194,7 +194,7 @@ def construct_train_val_by_class(x_train, y_train, x_gist,
     return x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, x_val, y_val
 
 
-def construct_train_val_by_class_subsampled(x_train, y_train, x_gist,
+def construct_train_val_by_class_subsampled(x_train, y_train, gist_train,
                                             train_size=100, val_size=1000):
     """construct diverse, similar, and random subsets of training data after subsampling"""
 
@@ -216,7 +216,7 @@ def construct_train_val_by_class_subsampled(x_train, y_train, x_gist,
     for cl in unique_classes:
         # get the images and gist features for this class
         x_cl = x_train[y_train[:, 0] == cl, :, :, :]
-        x_cl_g = x_gist[y_train[:, 0] == cl, :]
+        x_cl_g = gist_train[y_train[:, 0] == cl, :]
 
         # construct the training sets and validation set for this class
         x_cl_div, x_cl_sim, x_cl_rand, x_cl_val = \
@@ -238,14 +238,14 @@ def construct_train_val_by_class_subsampled(x_train, y_train, x_gist,
     return x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, x_val, y_val
 
 
-def construct_train_val_by_class_edited(x_train, y_train, x_gist, remove_ind,
+def construct_train_val_by_class_edited(x_train, y_train, gist_train, remove_ind,
                                         train_size=100, val_size=1000):
     """construct diverse, similar, and random subsets of training data with editing"""
 
     # construct an edited training set
     x_train_edited = np.delete(x_train, remove_ind, 0)
     y_train_edited = np.delete(y_train, remove_ind, 0)
-    x_gist_edited = np.delete(x_gist, remove_ind, 0)
+    gist_train_edited = np.delete(gist_train, remove_ind, 0)
 
     # what are the unique classes and how many are there
     unique_classes = np.unique(y_train)
@@ -265,9 +265,9 @@ def construct_train_val_by_class_edited(x_train, y_train, x_gist, remove_ind,
     for cl in unique_classes:
         # get the images and gist features for this class from both edited and unedited sets
         x_cl = x_train[y_train[:, 0] == cl, :, :, :]
-        x_cl_g = x_gist[y_train[:, 0] == cl, :]
+        x_cl_g = gist_train[y_train[:, 0] == cl, :]
         x_cl_edit = x_train_edited[y_train_edited[:, 0] == cl, :, :, :]
-        x_cl_g_edit = x_gist_edited[y_train_edited[:, 0] == cl, :]
+        x_cl_g_edit = gist_train_edited[y_train_edited[:, 0] == cl, :]
 
         # construct the training sets and validation set for this class
         _, x_cl_sim, x_cl_rand, x_cl_val = \
@@ -342,7 +342,7 @@ def experiment(x_train, y_train, x_val, y_val, x_test, y_test,
 
 
 def diversity_experiment_single(x_train, y_train,
-                                x_gist,
+                                gist_train,
                                 x_test, y_test,
                                 train_size=100, val_size=1000,
                                 runs=10,
@@ -361,7 +361,7 @@ def diversity_experiment_single(x_train, y_train,
     for run in np.arange(runs):
         # construct the training sets and the validation set
         x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, x_val, y_val = \
-            construct_train_val_by_class(x_train, y_train, x_gist, train_size, val_size)
+            construct_train_val_by_class(x_train, y_train, gist_train, train_size, val_size)
 
         diverse_accuracy, diverse_loss = experiment(x_diverse, y_diverse,
                                                     x_val, y_val,
@@ -405,7 +405,7 @@ def diversity_experiment_single(x_train, y_train,
 
 
 def diversity_experiment(x_train, y_train,
-                         x_gist,
+                         gist_train,
                          x_test, y_test,
                          train_sizes,
                          val_size=1000,
@@ -425,7 +425,7 @@ def diversity_experiment(x_train, y_train,
         print(f'performing experiment for train size={train_size}')
 
         sub_df = diversity_experiment_single(x_train, y_train,
-                                             x_gist,
+                                             gist_train,
                                              x_test, y_test,
                                              train_size=train_size, val_size=val_size, runs=runs,
                                              lr=lr, momentum=momentum, batch_size=batch_size,
@@ -472,7 +472,7 @@ def split_train_val(x, y, val_prop=.5):
 
 
 def diversity_experiment_single_with_constrained_val(x_train, y_train,
-                                                     x_gist,
+                                                     gist_train,
                                                      x_test, y_test,
                                                      train_size=100, val_prop=.5,
                                                      runs=10,
@@ -491,7 +491,7 @@ def diversity_experiment_single_with_constrained_val(x_train, y_train,
     for run in np.arange(runs):
         # construct the training sets
         x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, _, _ = \
-            construct_train_val_by_class(x_train, y_train, x_gist, int(train_size / val_prop), 0)
+            construct_train_val_by_class(x_train, y_train, gist_train, int(train_size / val_prop), 0)
 
         # set aside some training data as validation data
         x_diverse_train, y_diverse_train, x_diverse_val, y_diverse_val = \
@@ -544,7 +544,7 @@ def diversity_experiment_single_with_constrained_val(x_train, y_train,
 
 
 def diversity_experiment_constrained_val(x_train, y_train,
-                                         x_gist,
+                                         gist_train,
                                          x_test, y_test,
                                          train_sizes,
                                          val_prop,
@@ -563,7 +563,7 @@ def diversity_experiment_constrained_val(x_train, y_train,
     for train_size in train_sizes:
         print(f'performing experiment for train size = {train_size}')
         sub_df = diversity_experiment_single_with_constrained_val(x_train, y_train,
-                                                                  x_gist,
+                                                                  gist_train,
                                                                   x_test, y_test,
                                                                   train_size=train_size, val_prop=val_prop, runs=runs,
                                                                   lr=lr, momentum=momentum, batch_size=batch_size,
@@ -577,7 +577,7 @@ def diversity_experiment_constrained_val(x_train, y_train,
 
 
 def diversity_experiment_single_subsampled(x_train, y_train,
-                                           x_gist,
+                                           gist_train,
                                            x_test, y_test,
                                            train_size=100, val_size=1000,
                                            runs=10,
@@ -596,7 +596,7 @@ def diversity_experiment_single_subsampled(x_train, y_train,
     for run in np.arange(runs):
         # construct the training sets and the validation set
         x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, x_val, y_val = \
-            construct_train_val_by_class_subsampled(x_train, y_train, x_gist, train_size, val_size)
+            construct_train_val_by_class_subsampled(x_train, y_train, gist_train, train_size, val_size)
 
         diverse_accuracy, diverse_loss = experiment(x_diverse, y_diverse,
                                                     x_val, y_val,
@@ -640,7 +640,7 @@ def diversity_experiment_single_subsampled(x_train, y_train,
 
 
 def diversity_experiment_subsampled(x_train, y_train,
-                                    x_gist,
+                                    gist_train,
                                     x_test, y_test,
                                     train_sizes,
                                     val_size=1000,
@@ -660,7 +660,7 @@ def diversity_experiment_subsampled(x_train, y_train,
         print(f'performing experiment for train size={train_size}')
 
         sub_df = diversity_experiment_single_subsampled(x_train, y_train,
-                                                        x_gist,
+                                                        gist_train,
                                                         x_test, y_test,
                                                         train_size=train_size, val_size=val_size, runs=runs,
                                                         lr=lr, momentum=momentum, batch_size=batch_size,
@@ -674,7 +674,7 @@ def diversity_experiment_subsampled(x_train, y_train,
 
 
 def diversity_experiment_single_edited(x_train, y_train,
-                                       x_gist,
+                                       gist_train,
                                        x_test, y_test,
                                        remove_ind,
                                        train_size=100, val_prop=.5,
@@ -694,7 +694,7 @@ def diversity_experiment_single_edited(x_train, y_train,
     for run in np.arange(runs):
         # construct the training sets
         x_diverse, y_diverse, x_similar, y_similar, x_random, y_random, _, _ = \
-            construct_train_val_by_class_edited(x_train, y_train, x_gist, remove_ind, train_size * 2, 0)
+            construct_train_val_by_class_edited(x_train, y_train, gist_train, remove_ind, train_size * 2, 0)
 
         # set aside some training data as validation data
         x_diverse_train, y_diverse_train, x_diverse_val, y_diverse_val = \
@@ -747,7 +747,7 @@ def diversity_experiment_single_edited(x_train, y_train,
 
 
 def diversity_experiment_edited(x_train, y_train,
-                                x_gist,
+                                gist_train,
                                 x_test, y_test,
                                 remove_ind,
                                 train_sizes,
@@ -767,7 +767,7 @@ def diversity_experiment_edited(x_train, y_train,
     for train_size in train_sizes:
         print(f'performing experiment for train size = {train_size}')
         sub_df = diversity_experiment_single_edited(x_train, y_train,
-                                                    x_gist,
+                                                    gist_train,
                                                     x_test, y_test,
                                                     remove_ind,
                                                     train_size=train_size, val_prop=val_prop, runs=runs,
@@ -782,7 +782,7 @@ def diversity_experiment_edited(x_train, y_train,
 
 
 def diversity_experiment_kmeans(x_train, y_train,
-                                x_gist,
+                                gist_train,
                                 x_test, y_test,
                                 train_sizes,
                                 edit_indices=None,
@@ -799,7 +799,7 @@ def diversity_experiment_kmeans(x_train, y_train,
     if edit_indices is not None:
         x_train = np.delete(x_train, edit_indices, 0)
         y_train = np.delete(y_train, edit_indices, 0)
-        x_gist = np.delete(x_gist, edit_indices, 0)
+        gist_train = np.delete(gist_train, edit_indices, 0)
 
     # normalize pixel values
     x_train = x_train / 255.
@@ -816,7 +816,7 @@ def diversity_experiment_kmeans(x_train, y_train,
     diverse_by_cluster_losses = []
 
     # assign clusters by class
-    x_train, y_train, x_gist, clusters = assign_clusters_by_class(x_train, y_train, x_gist, n_clust, n_jobs)
+    x_train, y_train, gist_train, clusters = assign_clusters_by_class(x_train, y_train, gist_train, n_clust, n_jobs)
 
     for train_size in train_sizes:
         print(f'performing experiment for train size = {train_size}')
@@ -828,7 +828,7 @@ def diversity_experiment_kmeans(x_train, y_train,
             x_diverse_by_cluster = []
             for cls in np.arange(k):
                 x_cls = x_train[y_train.flatten() == cls, :, :, :]
-                gist_cls = x_gist[y_train.flatten() == cls, :]
+                gist_cls = gist_train[y_train.flatten() == cls, :]
                 clust_cls = clusters[y_train.flatten() == cls]
 
                 x_cls_random = x_cls[np.random.choice(x_cls.shape[0],
@@ -894,7 +894,7 @@ def diversity_experiment_kmeans(x_train, y_train,
     return results_df
 
 
-def assign_clusters_by_class(x_train, y_train, x_gist, n_clusters=5, n_jobs=4):
+def assign_clusters_by_class(x_train, y_train, gist_train, n_clusters=5, n_jobs=4):
     """split the data by class, then cluster each class"""
 
     classes = np.unique(y_train)
@@ -906,13 +906,13 @@ def assign_clusters_by_class(x_train, y_train, x_gist, n_clusters=5, n_jobs=4):
 
     for cls in classes:
         x_cls = x_train[y_train.flatten() == cls, :, :, :]
-        x_gist_cls = x_gist[y_train.flatten() == cls, :]
+        gist_train_cls = gist_train[y_train.flatten() == cls, :]
 
-        kmeans = cluster.KMeans(n_clusters=n_clusters, n_jobs=n_jobs).fit(x_gist_cls)
+        kmeans = cluster.KMeans(n_clusters=n_clusters, n_jobs=n_jobs).fit(gist_train_cls)
 
         x_out.append(x_cls)
         y_out.append(np.repeat(cls, x_cls.shape[0]))
-        gist_out.append(x_gist_cls)
+        gist_out.append(gist_train_cls)
         clust_out.append(kmeans.labels_)
 
     x_out = np.concatenate(x_out, 0)
@@ -925,7 +925,7 @@ def assign_clusters_by_class(x_train, y_train, x_gist, n_clusters=5, n_jobs=4):
 
 
 def diversity_experiment_one_obs_per_cluster(x_train, y_train,
-                                             x_gist,
+                                             gist_train,
                                              x_test, y_test,
                                              train_sizes,
                                              edit_indices=None,
@@ -941,7 +941,7 @@ def diversity_experiment_one_obs_per_cluster(x_train, y_train,
     if edit_indices is not None:
         x_train = np.delete(x_train, edit_indices, 0)
         y_train = np.delete(y_train, edit_indices, 0)
-        x_gist = np.delete(x_gist, edit_indices, 0)
+        gist_train = np.delete(gist_train, edit_indices, 0)
 
     # normalize pixel values
     x_train = x_train / 255.
@@ -958,7 +958,7 @@ def diversity_experiment_one_obs_per_cluster(x_train, y_train,
         print(f'performing experiment for train size = {train_size}')
         # one cluster per draw
         x_train_clust, y_train_clust, gist_clust, clusters = \
-            assign_clusters_by_class(x_train, y_train, x_gist, train_size, n_jobs)
+            assign_clusters_by_class(x_train, y_train, gist_train, train_size, n_jobs)
 
         y = np.repeat(np.arange(k), int(train_size / val_prop)).reshape(k * int(train_size / val_prop), 1)
         for _ in np.arange(runs):
