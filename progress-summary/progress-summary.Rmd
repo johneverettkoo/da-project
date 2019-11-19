@@ -1,5 +1,5 @@
 ---
-title: Identifying Measures of Training Data Quality for Classifying Images
+title: Experiments Around Data Selection Methods
 author:
   - David Crandall
   - John Koo
