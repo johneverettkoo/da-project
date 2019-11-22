@@ -310,7 +310,7 @@ def experiment(x_train, y_train, x_val, y_val, x_test, y_test,
     y_test = np_utils.to_categorical(y_test)
 
     # determine how to stop the training
-    earlystopping = EarlyStopping(monitor='val_loss', mode='min', patience=patience)
+    earlystopping = EarlyStopping(monitor='val_loss', mode='min', patience=patience, restore_best_weights=True)
 
     # run experiment on diverse set
     # shuffle the training data
@@ -416,8 +416,8 @@ def diversity_experiment(x_train, y_train,
     """perform diversity experiment for a range of train sizes"""
 
     # normalize pixel values
-    x_train = x_train / 255.
-    x_test = x_test / 255.
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
 
     results_df = []
 
@@ -555,8 +555,8 @@ def diversity_experiment_constrained_val(x_train, y_train,
     """perform diversity experiment for a range of train sizes and nonrandom sampled validation set"""
 
     # normalize pixel values
-    x_train = x_train / 255.
-    x_test = x_test / 255.
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
 
     results_df = []
 
@@ -651,8 +651,8 @@ def diversity_experiment_subsampled(x_train, y_train,
     """perform diversity experiment for a range of train sizes (subsampled variant)"""
 
     # normalize pixel values
-    x_train = x_train / 255.
-    x_test = x_test / 255.
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
 
     results_df = []
 
@@ -759,8 +759,8 @@ def diversity_experiment_edited(x_train, y_train,
     """perform diversity experiment for a range of train sizes and nonrandom sampled validation set"""
 
     # normalize pixel values
-    x_train = x_train / 255.
-    x_test = x_test / 255.
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
 
     results_df = []
 
@@ -802,8 +802,8 @@ def diversity_experiment_kmeans(x_train, y_train,
         gist_train = np.delete(gist_train, edit_indices, 0)
 
     # normalize pixel values
-    x_train = x_train / 255.
-    x_test = x_test / 255.
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
 
     # number of classes
     k = len(np.unique(y_train))
@@ -944,8 +944,8 @@ def diversity_experiment_one_obs_per_cluster(x_train, y_train,
         gist_train = np.delete(gist_train, edit_indices, 0)
 
     # normalize pixel values
-    x_train = x_train / 255.
-    x_test = x_test / 255.
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
 
     # number of classes
     k = len(np.unique(y_train))
