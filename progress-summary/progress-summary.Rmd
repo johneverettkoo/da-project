@@ -758,7 +758,7 @@ cifar10.clustered.edited.df %>%
 * CIFAR-100
 * COIL-20 and COIL-100
 
-## Variational Autoencoders
+## Convolutional Autoencoders
 
 * How to map from embedding to image
 
