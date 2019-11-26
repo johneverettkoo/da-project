@@ -760,7 +760,7 @@ cifar10.clustered.edited.df %>%
 
 ## Convolutional Autoencoders
 
-* How to map from embedding to image
+GIST features have been shown to 
 
 # Conclusions and Next Steps
 
