@@ -71,7 +71,7 @@ mnist.df <- dplyr::bind_rows(mnist.df, mnist.small.df)
 
 cifar10.val.from.train.path <- file.path('~/dev/da-project',
                                          'subset-validation-from-training',
-                                         'cifar-constrained-val-results.csv')
+                                         'cifar10-constrained-val-results.csv')
 mnist.val.from.train.path <- file.path('~/dev/da-project', 
                                        'subset-validation-from-training',
                                        'mnist-constrained-val-results.csv')
@@ -176,7 +176,7 @@ the validation set, and the rest were set aside for testing. No blurring was
 applied to these images. It is assumed that all images were taken with a 
 $70^\circ$ lens. Each experiment was replicated 10 times. 
 
-```{r dogs_size, fig.cap = '"Size" experiment on the Stanford Dogs dataset. Error bars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
+```{r dogs_size, fig.cap = '"Size" experiment on the Stanford Dogs dataset. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
 dogs.size.df %>% 
   dplyr::mutate(size = ifelse(size == 'high', 'big', 'small')) %>% 
   dplyr::group_by(fov, size) %>% 
@@ -199,7 +199,7 @@ dogs.size.df %>%
         legend.background = element_blank())
 ```
 
-```{r dogs_diverse, fig.cap = '"Diversity" experiment on the Stanford Dogs dataset. Error bars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions'}
+```{r dogs_diverse, fig.cap = '"Diversity" experiment on the Stanford Dogs dataset. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions'}
 dogs.diversity.df %>% 
   dplyr::group_by(fov, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
@@ -260,7 +260,39 @@ CIFAR-10 images), we varied the training set sizes. For a given training set
 size $n$, we sampled $2 n$ images from each class and set aside half for 
 validation. The sampling was done according to the "diverse", "similar", and 
 "random" sampling methods (see Figs. \ref{fig:diverse_cats},
-\ref{fig:similar_cats}, \ref{fig:random_cats}). 
+\ref{fig:similar_cats}, \ref{fig:random_cats}). Models are compared by their 
+predictive accuracies on the held-out test set. The results show that as 
+$n$ grows, model performance across all three sampling methods converge, which 
+is expected as we approach $n \to$ original training set size. Disappointingly, 
+the random sampling method tends to result in as good or better models than the 
+diverse sampling method (Fig. \ref{fig:cifar10_diversity}. The similar sampling method tends to result in the worst models of the three. One hypothesis on why 
+the diverse sampling method underperforms is that it tends to select rather 
+unique images that are unlike the others, and the model overfits to those 
+images. 
+
+```{r cifar10_diversity, fig.cap = 'Diversity experiment on CIFAR-10 data. The $x$-axis is on the log-scale. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
+cifar10.val.from.train.df %>% 
+  # dplyr::filter(accuracy > .15) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(1, 'mm'),
+        text = element_text(size = 9),
+        legend.position = c(.85, .3),
+        legend.background = element_blank())
+```
 
 ## Other Related Work
 
@@ -318,6 +350,12 @@ more practical scenario, the data collection process would involve creating
 new images (e.g., by taking photographs). 
 
 # Experiments and Results
+
+## Data Editing
+
+## Clustering
+
+## Transfer Learning
 
 # Conclusions and Future Work
 
