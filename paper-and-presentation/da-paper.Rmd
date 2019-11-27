@@ -9,16 +9,17 @@ author:
 date: December 16, 2019
 output: 
   pdf_document:
-   citation_package: natbib
+    citation_package: natbib
   # html_document
 bibliography: da-paper.bib
-# output: html_document
 # geometry: "left=1cm,right=1cm,top=1cm,bottom=1.5cm"
 urlcolor: blue
 header-includes:
 - \usepackage{float}
 - \usepackage{mathtools}
 - \setcitestyle{numbers,square}
+- \usepackage{caption}
+- \captionsetup[figure]{font=scriptsize}
 abstract: |
   Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Expanding upon on previous work by Bambach, Crandall, Smith, and Yu \cite{NIPS2018_7396}, our work explores various methods for subsampling training images under a data budget for fitting an image classification model and compares the results against uniform random sampling. Our methods make use of image embeddings to determine image diversity and outlyingness.
 ---
@@ -46,6 +47,10 @@ import::from(magrittr, `%>%`, `%<>%`)
 # theme_set(ggthemes::theme_base())
 theme_set(theme_bw())
 z <- 1  # number of standard deviations for plotting
+```
+
+```{r two_cols, results='asis'}
+cat('\\twocolumn')
 ```
 
 ```{r data_ingest}
@@ -81,7 +86,7 @@ mnist.val.from.train.df <- readr::read_csv(mnist.val.from.train.path)
 cifar10.edited.path <- file.path(
   '~/dev/da-project',
   'edited-training-data', 
-  'cifar10-edited-training-results.csv')
+  'cifar10-edited5nn-training-results.csv')
 cifar10.edited.df <- readr::read_csv(cifar10.edited.path)
 
 cifar10.clustered.path <- 
@@ -112,9 +117,17 @@ Manually labelling thousands or even millions of images can be tedious,
 time-consuming, and expensive \cite{Christensen_2016}.
 Some proposed and empirically verified solutions to the limited data problem
 include using a smaller network with fewer parameters, starting with a
-pre-trained model, and image augmentation \cite{perez2017effectiveness}. In 
-this paper, we propose methods for selectively choosing training images under a 
-set data "budget" and discuss how they compare against uniform random sampling. 
+pre-trained model, and increasing the effective training set size using image
+augmentation \cite{perez2017effectiveness}. In this paper, we propose methods 
+for selectively choosing training images under a set data "budget" and discuss
+how they compare against uniform random sampling. 
+
+The bulk of our work involves replicating a previous study \cite{NIPS2018_7396} 
+using different datasets, checking if our results are consistent with theirs,
+hypothesizing how these methods work, and expanding upon this work by 
+attempting to come up with new methods based on some of the ideas put forth by 
+the original study. The new methods we propose in this paper fail to outperform 
+uniform random sampling.
 
 # Previous Work
 
@@ -157,7 +170,8 @@ supporting this result.
 
 The diversity experiment can be described as follows: Again, frames were 
 randomly sampled from video feeds. These frames were then embedded into 
-Euclidean space using GIST features \cite{Torralba:2003:CPO:644361.644382}. 
+Euclidean space using GIST features[^gist] 
+\cite{Torralba:2003:CPO:644361.644382}. 
 Three training subsets were sampled based on the GIST features: a "diverse" 
 subset that maximizes pairwise distances, a "similar" subset that minimizes 
 pairwise distances, and a "random" subset. Models fit on the random subset 
@@ -165,6 +179,8 @@ outperformed the models fit on the diverse subset which outperformed the models
 fit on the similar subset, using test accuracy to compare models. Images were
 again cropped to simulate various focal lengths, and lower focal lengths again
 resulted in better model performance. 
+
+[^gist]: GIST features for our configuration are in $\mathbb{R}^{960}$.
 
 We attempted to replicate this study using the Stanford Dogs dataset
 \cite{KhoslaYaoJayadevaprakashFeiFei_FGVC2011}, which consists of around 20,000 
@@ -344,20 +360,99 @@ into regions that correspond to each class, for each class, we should choose
 a training sample that fills up that class' region without crossing over into 
 any other regions. 
 
-One thing that is not clear is how this relates to the data collection process. 
-Most previous studies sample from a pool of preexisting images, but in a 
-more practical scenario, the data collection process would involve creating 
-new images (e.g., by taking photographs). 
+One thing that is not clear is how we can relate various training subset 
+selection methods to the physical data collection process. Most previous 
+studies sample from a pool of preexisting images, but in a more practical
+scenario, the data collection process would involve creating new images (e.g., 
+by taking photographs). It is also not clear how we can go from a point in the 
+embedding space (GIST or otherwise) to an actual image.
 
-# Experiments and Results
+# Methods and Results
 
 ## Data Editing
+
+We used Wilson editing to remove outliers from the training set before 
+subsampling using the diverse sampling method. The random and similar 
+subsamples were drawn in their usual way. The idea behind this method is that
+Wilson editing will "clean" the training set by remove outliers, and then we 
+will try to construct a diverse training set from the cleaned data. Here, we 
+chose $k = 5$ based on cross-validated accuracy[^cv]. $k$-nearest neighbors
+classification was performed using GIST features. The same VGG16 architecture 
+was fit on these training subsets. 
+
+Our results suggest that data editing prior to diverse sampling does improve 
+model performance when training sample sizes are small (Fig.
+\ref{fig:edited_vs_unedited}). However, randomly sampled training subsets still
+result in better models (Fig. \ref{fig:cifar10_diversity}).
+
+[^cv]: To save on computational costs, we used 10-fold cross validation instead 
+of the leave-one-out cross validation prescribed by Wilson. $5$-NN achieved 
+approximately 70\% accuracy.
+
+```{r cifar10_edited, fig.cap = 'Diversity experiment on CIFAR-10 data, drawing from an edited dataset. The $x$-axis is on the log-scale. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
+cifar10.edited.df %>% 
+  # dplyr::filter(accuracy > .15) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(1, 'mm'),
+        text = element_text(size = 9),
+        legend.position = c(.85, .3),
+        legend.background = element_blank())
+```
+
+```{r edited_vs_unedited, fig.cap = 'Impact of editing the training data prior to drawing a "diverse" sample. The $x$-axis is on the log-scale. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
+cifar10.edited.df %>% 
+  dplyr::filter(train_set_type == 'diverse') %>% 
+  dplyr::inner_join(cifar10.val.from.train.df, 
+                    by = c('train_size', 'train_set_type')) %>%
+  dplyr::group_by(train_size) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy.y), 
+                   mean.acc.edited = mean(accuracy.x),
+                   sd.acc = sd(accuracy.y), 
+                   sd.acc.edited = sd(accuracy.x)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = 'not edited')) + 
+  geom_line(aes(x = train_size, y = mean.acc.edited, colour = 'edited')) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc,
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = 'not edited')) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc.edited - z * sd.acc.edited, 
+                    ymax = mean.acc.edited + z * sd.acc.edited, 
+                    colour = 'edited')) + 
+  labs(x = 'training set size per class', y = 'test accuracy', 
+       colour = NULL) + 
+  theme(legend.key.width = unit(1, 'mm'),
+        text = element_text(size = 9),
+        legend.position = c(.85, .3),
+        legend.background = element_blank())
+```
 
 ## Clustering
 
 ## Transfer Learning
 
 # Conclusions and Future Work
+
+```{r one_col, results='asis'}
+cat('\\onecolumn')
+```
 
 \newpage
 
