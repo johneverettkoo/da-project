@@ -2,6 +2,7 @@
 title: 
   Experiments Around Training Data Selection Methods for 
   Image Classification
+subtitle: Department of Statistics Data Analysis Qualifying Exam
 author:
   - David Crandall[^csci]
   - John Koo[^stat]
@@ -247,10 +248,13 @@ reveals that the median bounding box coverage was around 50\%, compared to
 10\% of the toys dataset, and cropping often resulted in cutting off parts of 
 the object of interest (Fig. \ref{fig:crop_dog}).
 
-Results of the diversity experiment (Fig. \ref{fig:dogs_diverse}) suggest 
-that there may be some difference between the models fitted on "diverse" vs. 
-"similar" training sets at the original focal lengths, but it is not clear if 
-this is a significant result. 
+Results of the diversity[^leargist] experiment (Fig. \ref{fig:dogs_diverse})
+suggest that there may be some difference between the models fitted on 
+"diverse" vs. "similar" training sets at the original focal lengths, but it is 
+not clear whether this is a significant result. 
+
+[^leargist]: Diversity was measured using pairwise GIST features, which were 
+extracted using a Python package created by \citet{lear_gist}.
 
 ```{r crop_dog, out.width = '10%', fig.cap = 'An image from the Stanford Dogs dataset cropped from an assumed $70^\\circ$ FoV to $30^\\circ$.'}
 knitr::include_graphics('~/dev/da-project/images/cropped-dog.png')
@@ -288,7 +292,6 @@ images.
 
 ```{r cifar10_diversity, fig.cap = 'Diversity experiment on CIFAR-10 data. The $x$-axis is on the log-scale. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
 cifar10.val.from.train.df %>% 
-  # dplyr::filter(accuracy > .15) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
@@ -367,18 +370,19 @@ scenario, the data collection process would involve creating new images (e.g.,
 by taking photographs). It is also not clear how we can go from a point in the 
 embedding space (GIST or otherwise) to an actual image.
 
-# Methods and Results
+# Proposed Methods and Results
 
 ## Data Editing
 
-We used Wilson editing to remove outliers from the training set before 
+We used Wilson editing to remove "outliers" from the training set before 
 subsampling using the diverse sampling method. The random and similar 
 subsamples were drawn in their usual way. The idea behind this method is that
 Wilson editing will "clean" the training set by remove outliers, and then we 
-will try to construct a diverse training set from the cleaned data. Here, we 
-chose $k = 5$ based on cross-validated accuracy[^cv]. $k$-nearest neighbors
-classification was performed using GIST features. The same VGG16 architecture 
-was fit on these training subsets. 
+will try to construct a diverse training set from the cleaned data---hopefully
+this will allow us to remove "bad" images while simultaneously spanning as
+much of the image space as possible. $k$-nearest neighbors classification was 
+performed using GIST features. We chose $k = 5$ based on cross-validated
+accuracy[^cv]. The same VGG16 architecture was fit on these training subsets. 
 
 Our results suggest that data editing prior to diverse sampling does improve 
 model performance when training sample sizes are small (Fig.
@@ -391,7 +395,6 @@ approximately 70\% accuracy.
 
 ```{r cifar10_edited, fig.cap = 'Diversity experiment on CIFAR-10 data, drawing from an edited dataset. The $x$-axis is on the log-scale. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
 cifar10.edited.df %>% 
-  # dplyr::filter(accuracy > .15) %>% 
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
@@ -440,11 +443,46 @@ cifar10.edited.df %>%
        colour = NULL) + 
   theme(legend.key.width = unit(1, 'mm'),
         text = element_text(size = 9),
-        legend.position = c(.85, .3),
+        legend.position = c(.85, .25),
         legend.background = element_blank())
 ```
 
 ## Clustering
+
+The motivations behind clustering the training data embeddings are twofold: 
+First, by drawing data uniformly across each cluster, we can draw samples that 
+are relatively dissimilar from each other while reducing the chances of drawing
+outliers compared to the diverse sampling method. Second, clustering may help 
+us discover subclasses, and drawing balanced samples across these subclasses 
+may result in better model performance. For each class, we used $k$-means 
+clustering with $k = 10$ and drew training data maintaining cluster balance for 
+each class. This was compared against random sampling (without using any 
+cluster information). Our results suggest that these training subset selection 
+methods result in equivalent model performance
+
+```{r cifar10_clustered, fig.cap = 'Diversity experiment on CIFAR-10 data, drawing from clusters.'}
+cifar10.clustered.df %>% 
+  dplyr::filter(train_set_type != 'diverse by cluster') %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() +
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(1, 'mm'),
+        text = element_text(size = 9),
+        legend.position = c(.8, .25),
+        legend.background = element_blank())
+```
 
 ## Transfer Learning
 
