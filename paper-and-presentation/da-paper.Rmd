@@ -1,0 +1,326 @@
+---
+title: 
+  Experiments Around Training Data Selection Methods for 
+  Image Classification
+author:
+  - David Crandall[^csci]
+  - John Koo[^stat]
+  - Michael Trosset[^stat]
+date: December 16, 2019
+output: 
+  pdf_document:
+   citation_package: natbib
+  # html_document
+bibliography: da-paper.bib
+# output: html_document
+# geometry: "left=1cm,right=1cm,top=1cm,bottom=1.5cm"
+urlcolor: blue
+header-includes:
+- \usepackage{float}
+- \usepackage{mathtools}
+- \setcitestyle{numbers,square}
+abstract: |
+  Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Expanding upon on previous work by Bambach, Crandall, Smith, and Yu \cite{NIPS2018_7396}, our work explores various methods for subsampling training images under a data budget for fitting an image classification model and compares the results against uniform random sampling. Our methods make use of image embeddings to determine image diversity and outlyingness.
+---
+
+[^csci]: Department of Computer Science, Indiana University Bloomington
+
+[^stat]: Department of Statistics, Indiana University Bloomington
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      comment = NA, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      fig.pos = 'H', 
+                      fig.align = 'center', 
+                      fig.height = 2, 
+                      fig.width = 3, 
+                      fig.dpi = 100)
+options(xtable.comment = FALSE, 
+        xtable.table.placement = 'H')
+
+library(ggplot2)
+import::from(magrittr, `%>%`, `%<>%`)
+
+# theme_set(ggthemes::theme_base())
+theme_set(theme_bw())
+z <- 1  # number of standard deviations for plotting
+```
+
+```{r data_ingest}
+dogs.diversity.path <- 
+  '~/dev/da-project/misc/stanford-dogs/results-diversity.csv'
+dogs.size.path <- 
+  '~/dev/da-project/misc/stanford-dogs/results-size.csv'
+dogs.diversity.df <- readr::read_csv(dogs.diversity.path)
+dogs.size.df <- readr::read_csv(dogs.size.path)
+
+
+cifar10.path <- '~/dev/da-project/cifar-results.csv'
+mnist.path <- '~/dev/da-project/mnist-results.csv'
+cifar10.small.path <- '~/dev/da-project/cifar-results-small-data.csv'
+mnist.small.path <- '~/dev/da-project/mnist-results-small-data.csv'
+cifar10.df <- readr::read_csv(cifar10.path)
+mnist.df <- readr::read_csv(mnist.path)
+cifar10.small.df <- readr::read_csv(cifar10.small.path)
+mnist.small.df <- readr::read_csv(mnist.small.path)
+cifar10.df <- dplyr::bind_rows(cifar10.df, cifar10.small.df)
+mnist.df <- dplyr::bind_rows(mnist.df, mnist.small.df)
+
+
+cifar10.val.from.train.path <- file.path('~/dev/da-project',
+                                         'subset-validation-from-training',
+                                         'cifar-constrained-val-results.csv')
+mnist.val.from.train.path <- file.path('~/dev/da-project', 
+                                       'subset-validation-from-training',
+                                       'mnist-constrained-val-results.csv')
+cifar10.val.from.train.df <- readr::read_csv(cifar10.val.from.train.path)
+mnist.val.from.train.df <- readr::read_csv(mnist.val.from.train.path)
+
+cifar10.edited.path <- file.path(
+  '~/dev/da-project',
+  'edited-training-data', 
+  'cifar10-edited-training-results.csv')
+cifar10.edited.df <- readr::read_csv(cifar10.edited.path)
+
+cifar10.clustered.path <- 
+  '~/dev/da-project/kmeans-sampling/cifar10-kmeans-results.csv'
+cifar10.clustered.df <- readr::read_csv(cifar10.clustered.path)
+cifar10.clustered.edited.path <- 
+  '~/dev/da-project/kmeans-sampling/cifar10-kmeans-edited-results.csv'
+cifar10.clustered.edited.df <- readr::read_csv(cifar10.clustered.edited.path)
+```
+
+# Introduction
+
+LeNet-5, 1998 \cite{Lecun98gradient-basedlearning}, was the first widely
+recognized CNN architecture for image classification. Consisting of only seven
+layers,three of which are convolutional, training this network on 
+$32 \times 32$ greyscale images of handwritten digits involved fitting 60,000
+model parameters. Over time, as larger datasets and more powerful computer
+hardware became available, CNN architectures grew deeper and more complicated:
+AlexNet, 2012 \cite{Krizhevsky:2012:ICD:2999134.2999257}, consists of 8 layers
+and 60M parameters, and VGG16, 2015 \cite{simonyan2014deep}, consists of 41
+layers and 138M parameters). Due to the massive number of training parameters,
+these deep models require large amounts of data to prevent overfitting. In 
+fact, it has been observed that performance gains can continue to scale with 
+the training set size, even into the billions \cite{mahajan2018exploring}. 
+
+However, obtaining large datasets for deep models is not always feasible. 
+Manually labelling thousands or even millions of images can be tedious, 
+time-consuming, and expensive \cite{Christensen_2016}.
+Some proposed and empirically verified solutions to the limited data problem
+include using a smaller network with fewer parameters, starting with a
+pre-trained model, and image augmentation \cite{perez2017effectiveness}. In 
+this paper, we propose methods for selectively choosing training images under a 
+set data "budget" and discuss how they compare against uniform random sampling. 
+
+# Previous Work
+
+\citet{NIPS2018_7396} demonstrated that given a large pool of images 
+and a fixed training set size, it is possible to tailor the training set for 
+fitting a VGG16 network that results in better or worse performance on a 
+separate test set. They then described two characteristics of the datasets that 
+seemed to correspond to model performance: object size (how much of the image 
+the object takes up) and diversity (after embedding the images in 
+$\mathbb{R}^d$, how much space the training point cloud takes up). Their study 
+showed that model performance correlated positively with object size in the 
+training set, and training sets consisting of "diverse" images tended to 
+outperform those consisting of "similar" images. 
+
+## Replication Study
+
+The data in the above study is as follows:
+
+* Training images were sampled from the frames of first person video feeds, 
+from the point of view of toddlers and parents playing with one of 24 toys. The 
+video was taken with a $70^\circ$ lens. Bounding boxes of the toys were 
+drawn for each image to determine the size and location of the toy. The images 
+were blurred around the object using the bounding box information to simulate 
+visual acuity.
+* Validation and testing sets consisted of artificially generated images of the 
+24 toys.
+
+Two experiments were then performed on these data. Both experiments involved 
+fitting VGG16 networks on a particular training set.
+
+The size experiment can be described as follows: Frames were randomly sampled
+from the video feeds and ranked according to object size (median of around 
+10\%). These were then split into a training set of "big" objects and a 
+training set of "small" objects. It was shown that the model fit on the big
+objects outperformed the model fit on the small objects when comparing test
+accuracies. The images were also cropped into the object to simulate varying
+focal lengths from the original $70^\circ$ down to $30^\circ$ in increments of 
+$10^\circ$, and the croppedimages outperformed the original images, further
+supporting this result.
+
+The diversity experiment can be described as follows: Again, frames were 
+randomly sampled from video feeds. These frames were then embedded into 
+Euclidean space using GIST features \cite{Torralba:2003:CPO:644361.644382}. 
+Three training subsets were sampled based on the GIST features: a "diverse" 
+subset that maximizes pairwise distances, a "similar" subset that minimizes 
+pairwise distances, and a "random" subset. Models fit on the random subset 
+outperformed the models fit on the diverse subset which outperformed the models 
+fit on the similar subset, using test accuracy to compare models. Images were
+again cropped to simulate various focal lengths, and lower focal lengths again
+resulted in better model performance. 
+
+We attempted to replicate this study using the Stanford Dogs dataset
+\cite{KhoslaYaoJayadevaprakashFeiFei_FGVC2011}, which consists of around 20,000 
+images of 120 dog breeds. Most images contain one dog per image, and images 
+that contain multiple dogs were discarded. For each breed, 100 images were 
+randomly selected for the training set (which were further divided into 50-50
+training subsets based on the experiment), 25 images were randomly selected for 
+the validation set, and the rest were set aside for testing. No blurring was 
+applied to these images. It is assumed that all images were taken with a 
+$70^\circ$ lens. Each experiment was replicated 10 times. 
+
+```{r dogs_size, fig.cap = '"Size" experiment on the Stanford Dogs dataset. Error bars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
+dogs.size.df %>% 
+  dplyr::mutate(size = ifelse(size == 'high', 'big', 'small')) %>% 
+  dplyr::group_by(fov, size) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = fov, y = mean.acc, colour = size)) + 
+  geom_errorbar(aes(x = fov, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = size),
+                width = 1) + 
+  labs(x = 'field of view', 
+       y = 'test accuracy', 
+       colour = NULL) + 
+  theme(legend.key.width = unit(1, 'mm'),
+        text = element_text(size = 9),
+        legend.position = c(.8, .25),
+        legend.background = element_blank())
+```
+
+```{r dogs_diverse, fig.cap = '"Diversity" experiment on the Stanford Dogs dataset. Error bars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions'}
+dogs.diversity.df %>% 
+  dplyr::group_by(fov, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = fov, y = mean.acc, colour = train_set_type)) + 
+  geom_errorbar(aes(x = fov, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type),
+                width = 1) + 
+  labs(x = 'field of view', 
+       y = 'test accuracy', 
+       colour = NULL) + 
+  theme(legend.key.width = unit(1, 'mm'),
+        text = element_text(size = 9),
+        legend.position = c(.8, .25),
+        legend.background = element_blank())
+```
+
+Fig. \ref{fig:dogs_size} shows that for the original, uncropped images (FoV =
+$70^\circ$), models fit on the "big" subset tend to outperform models fit on 
+the "small" subset. However, instead of increased performance with reduced 
+field of view, we observed the opposite: as the images were cropped into the 
+objects of interest, the resulting models performed worse, and this was 
+especially true of the "big" subset. Closer inspection of the training images 
+reveals that the median bounding box coverage was around 50\%, compared to 
+10\% of the toys dataset, and cropping often resulted in cutting off parts of 
+the object of interest (Fig. \ref{fig:crop_dog}).
+
+Results of the diversity experiment (Fig. \ref{fig:dogs_diverse}) suggest 
+that there may be some difference between the models fitted on "diverse" vs. 
+"similar" training sets at the original focal lengths, but it is not clear if 
+this is a significant result. 
+
+```{r crop_dog, out.width = '10%', fig.cap = 'An image from the Stanford Dogs dataset cropped from an assumed $70^\\circ$ FoV to $30^\\circ$.'}
+knitr::include_graphics('~/dev/da-project/images/cropped-dog.png')
+```
+
+```{r diverse_cats, out.width = '33%', fig.cap = 'Images of cats from the CIFAR-10 dataset selected by the diverse sampling method.'}
+knitr::include_graphics('~/dev/da-project/images/diverse-cats.png')
+```
+
+```{r similar_cats, out.width = '33%', fig.cap = 'Images of cats from the CIFAR-10 dataset selected by the similar sampling method.'}
+knitr::include_graphics('~/dev/da-project/images/similar-cats.png')
+```
+
+```{r random_cats, out.width = '33%', fig.cap = 'Images of cats from the CIFAR-10 dataset selected by the random sampling method.'}
+knitr::include_graphics('~/dev/da-project/images/random-cats.png')
+```
+
+Focusing just on diversity, we tried a similar experiment using the 
+CIFAR-10 \cite{Krizhevsky09learningmultiple} dataset, which consists of 10 
+object classes, each class consisting of 5,000 training images and 1,000 
+test images. Instead of varying focal lengths (which is not possible with 
+CIFAR-10 images), we varied the training set sizes. For a given training set 
+size $n$, we sampled $2 n$ images from each class and set aside half for 
+validation. The sampling was done according to the "diverse", "similar", and 
+"random" sampling methods (see Figs. \ref{fig:diverse_cats},
+\ref{fig:similar_cats}, \ref{fig:random_cats}). 
+
+## Other Related Work
+
+\citet{wang2018data} proposed a two-round training approach to better fit 
+CNNs on a subset of the training set. In their approach, A CNN was fit on a 
+large training set, then for each image in the training set, an influence 
+measure was computed over all images in the validation set. If the influence 
+was negative, then that training image was discarded. The CNN was then fit 
+again using the reduced training set, and the resulting model was observed to 
+achieve a higher test accuracy than the original model trained prior to 
+subsetting the training data. 
+
+\citet{kaushal2019learning} also proposed an active learning approach to limit 
+the size of training data. Their method is as follows: First, a small subset of 
+a large training set is selected, and a model is fit on the subset. Predictions 
+are then made on the unselected images in the training set based on this model. 
+Images are chosen based on the uncertainty of the model prediction and added to
+the training subset, and the model is refitted using the larger training subset.
+This is then repeated over multiple rounds, increasing the size of the training
+subset each round. The study demonstrates that this method outperforms training
+on randomly sampled subsets of the same size. 
+
+\citet{Ferreira2016UnsupervisedES} proposed a maximum entropy based subset selection method for selecting training data, given that the inputs are of the form $x_i \in \mathbb{R}^d$. Their method starts with a large training set to 
+estimate the density of the feature space. 
+
+\citet{Wilson1972AsymptoticPO} demonstrated that edited $k$-nearest neighbors 
+classifiers outperform regular "unedited" $k$-nearest neighbors classifiers. 
+The Wilson editing method is described as follows: Given a training set 
+$X_1, ..., X_n \in \mathbb{R}^d$ with corresponding discrete labels
+$Y_1, ..., Y_n \in \{1, 2, ..., q\}$, use leave-one-out cross-validated
+$k$-nearest neighbors to determine $\hat{Y}_1, ..., \hat{Y}_n$. Discard 
+$i \in \{1, ..., n\}$ where $Y_i \neq \hat{Y}_i$ to construct a reduced, edited 
+training set. Finally, fit a new $k$-nearest neighbors model on the reduced
+training set. Wilson's results show that the model fit on the edited data tend 
+to outperform models fit on the entire training set, suggesting that outliers 
+in the training set are detrimental to the resulting model performance. 
+
+Based on the literature, training set selection methods can be classified as 
+denoising/filtering methods or as diversification methods. Denoising and 
+filtering methods remove outliers or atypical observations, while 
+diversification methods aim to make training observations as different from 
+each other as possible. These two ideas appear to be at odds with one another. 
+There also doesn't appear to be as much literature on how to apply such methods
+to image data, as they assume that the data can be naturally represented in 
+Euclidean space (i.e., as a data matrix). However, this does provide some sense 
+of how we can "construct" a good training sample: Given a "good" embedding of 
+images such that the embedding space can be separated by some set of manifolds 
+into regions that correspond to each class, for each class, we should choose 
+a training sample that fills up that class' region without crossing over into 
+any other regions. 
+
+One thing that is not clear is how this relates to the data collection process. 
+Most previous studies sample from a pool of preexisting images, but in a 
+more practical scenario, the data collection process would involve creating 
+new images (e.g., by taking photographs). 
+
+# Experiments and Results
+
+# Conclusions and Future Work
+
+\newpage
+
+# References
