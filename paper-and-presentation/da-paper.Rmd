@@ -486,6 +486,41 @@ cifar10.clustered.df %>%
 
 ## Transfer Learning
 
+## Summary of Results
+
+```{r, fig.width = 4}
+cifar10.val.from.train.df %>% 
+  dplyr::bind_rows(
+    cifar10.edited.df %>%
+      dplyr::filter(train_set_type == 'diverse') %>%
+      dplyr::mutate(train_set_type = 'diverse with editing')) %>%
+  dplyr::bind_rows(
+    cifar10.clustered.df %>%
+      dplyr::filter(train_set_type == 'random by cluster') %>%
+      dplyr::mutate(train_set_type = 'by cluster')) %>%
+  dplyr::group_by(train_size, train_set_type) %>%
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>%
+  dplyr::filter(train_size %in% c(10, 20, 40, 60, 80, 
+                                  100, 200, 250, 500)) %>% 
+  ggplot() + 
+  scale_x_log10() +
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type)) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(1, 'mm'),
+        text = element_text(size = 9),
+        # legend.position = c(.8, .25),
+        legend.background = element_blank())
+```
+
 # Conclusions and Future Work
 
 ```{r one_col, results='asis'}
