@@ -488,7 +488,7 @@ cifar10.clustered.df %>%
 
 ## Summary of Results
 
-```{r, fig.width = 4}
+```{r, fig.width = 5, fig.height = 3}
 cifar10.val.from.train.df %>% 
   dplyr::bind_rows(
     cifar10.edited.df %>%
@@ -517,7 +517,7 @@ cifar10.val.from.train.df %>%
        colour = NULL) + 
   theme(legend.key.width = unit(1, 'mm'),
         text = element_text(size = 9),
-        # legend.position = c(.8, .25),
+        legend.position = c(.8, .25),
         legend.background = element_blank())
 ```
 
