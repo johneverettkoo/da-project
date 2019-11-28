@@ -79,7 +79,9 @@ cifar10.clustered.edited.df <- readr::read_csv(cifar10.clustered.edited.path)
 * Spurned on by both a wealth of image data and computational resources,
 deep convolutional neural networks are now widely used for image classification
 models
-* CNNs may fit poorly when there is insufficient data.
+* CNNs may fit poorly when there is insufficient data, and the data collection 
+and labelling process can be expensive
+
 
 # Background: "Toddler-Inspired Visual Object Learning" (Crandall et al., 2018)
 

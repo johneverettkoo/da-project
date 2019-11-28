@@ -4,9 +4,9 @@ title:
   Image Classification
 subtitle: Department of Statistics Data Analysis Qualifying Exam
 author:
-  - David Crandall[^csci]
-  - John Koo[^stat]
-  - Michael Trosset[^stat]
+  - David Crandall
+  - John Koo
+  - Michael Trosset
 date: December 16, 2019
 output: 
   pdf_document:
@@ -23,12 +23,8 @@ header-includes:
 - \captionsetup[figure]{font=scriptsize}
 - \twocolumn
 abstract: |
-  Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Expanding upon on previous work by Bambach, Crandall, Smith, and Yu \cite{NIPS2018_7396}, our work explores various methods for subsampling training images under a data budget for fitting an image classification model and compares the results against uniform random sampling. Our methods make use of image embeddings to determine image diversity and outlyingness.
+  Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Expanding upon on previous work by Bambach, Crandall, Smith, and Yu \cite{NIPS2018_7396}, our work explores various methods for subsampling training images under a data budget for fitting an image classification model and compares the results against uniform random sampling. The intuition behind our methods is that we would like to sample a "diverse" training set while controlling for the probability of drawing atypical "outlier" images. While our results fail to outperform random sampling, we demonstrate the effects of fitting CNNs on training subsets drawn with varying degrees of diversity and outlyingness, which are measured using GIST-embedded distances.
 ---
-
-[^csci]: Department of Computer Science, Indiana University Bloomington
-
-[^stat]: Department of Statistics, Indiana University Bloomington
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, 
@@ -98,18 +94,45 @@ cifar10.clustered.edited.path <-
   '~/dev/da-project/kmeans-sampling/cifar10-kmeans-edited-results.csv'
 cifar10.clustered.edited.df <- readr::read_csv(cifar10.clustered.edited.path)
 
-cifar10.translearn.path <- file.path(
+cifar10.transfer.path <- file.path(
+  '~/dev/da-project/transfer-learning',
+  'cifar10-transfer-learning-results.csv')
+cifar10.transfer.edit.path <- file.path(
+  '~/dev/da-project/transfer-learning',
+  'cifar10-transfer-learning-edited-results.csv')
+cifar10.transfer.cluster.path <- file.path(
   '~/dev/da-project/transfer-learning',
   'cifar10-transfer-learning-kmeans-results.csv')
-cifar10.translearn.df <- readr::read_csv(cifar10.translearn.path)
+cifar10.transfer.edit.cluster.path <- file.path(
+  '~/dev/da-project/transfer-learning',
+  'cifar10-transfer-learning-edited-kmeans-results.csv')
+cifar10.translearn.df <- dplyr::bind_rows(
+  readr::read_csv(cifar10.transfer.path),
+  readr::read_csv(cifar10.transfer.edit.path) %>% 
+    dplyr::filter(train_set_type != 'similar') %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'random',
+                                          'random', 
+                                          'diverse with editing')),
+  readr::read_csv(cifar10.transfer.cluster.path) %>% 
+    dplyr::filter(train_set_type != 'diverse by cluster') %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'random',
+                                          'random',
+                                          'by cluster')),
+  readr::read_csv(cifar10.transfer.edit.cluster.path) %>% 
+    dplyr::filter(train_set_type != 'diverse by cluster') %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'random',
+                                          'random',
+                                          'edited and by cluster'))
+) %>% 
+  dplyr::filter(train_size <= 500)
 ```
 
-# Introduction
+# 1 Introduction
 
 LeNet-5, 1998 \cite{Lecun98gradient-basedlearning}, was the first widely
 recognized CNN architecture for image classification. Consisting of only seven
 layers,three of which are convolutional, training this network on 
-$32 \times 32$ greyscale images of handwritten digits involved fitting 60,000
+greyscale images of handwritten digits involved fitting 60,000
 model parameters. Over time, as larger datasets and more powerful computer
 hardware became available, CNN architectures grew deeper and more complicated:
 AlexNet, 2012 \cite{Krizhevsky:2012:ICD:2999134.2999257}, consists of 8 layers
@@ -136,7 +159,7 @@ attempting to come up with new methods based on some of the ideas put forth by
 the original study. The new methods we propose in this paper fail to outperform 
 uniform random sampling.
 
-# Previous Work
+# 2 Previous Work
 
 \citet{NIPS2018_7396} demonstrated that given a large pool of images 
 and a fixed training set size, it is possible to tailor the training set for 
@@ -149,7 +172,7 @@ showed that model performance correlated positively with object size in the
 training set, and training sets consisting of "diverse" images tended to 
 outperform those consisting of "similar" images. 
 
-## Replication Study
+## 2.1 Replication Study
 
 The data in the above study is as follows:
 
@@ -264,22 +287,22 @@ suggest that there may be some difference between the models fitted on
 "diverse" vs. "similar" training sets at the original focal lengths, but it is 
 not clear whether this is a significant result. 
 
-[^leargist]: Diversity was measured using pairwise GIST features, which were 
+[^leargist]: Diversity was based on pairwise GIST features, which were 
 extracted using a Python package created by \citet{lear_gist}.
 
 ```{r crop_dog, out.width = '10%', fig.cap = 'An image from the Stanford Dogs dataset cropped from an assumed $70^\\circ$ FoV to $30^\\circ$.'}
 knitr::include_graphics('~/dev/da-project/images/cropped-dog.png')
 ```
 
-```{r out.width = '40%'}
+```{r out.width = '50%'}
 knitr::include_graphics('~/dev/da-project/images/diverse-cats.png')
 ```
 
-```{r out.width = '40%'}
+```{r out.width = '50%'}
 knitr::include_graphics('~/dev/da-project/images/similar-cats.png')
 ```
 
-```{r cats, out.width = '40%', fig.cap = 'Images of cats from the CIFAR-10 dataset selected by the diverse (top), similar (middle), and random (bottom) sampling methods.'}
+```{r cats, out.width = '50%', fig.cap = 'Images of cats from the CIFAR-10 dataset selected by the diverse (top), similar (middle), and random (bottom) sampling methods.'}
 knitr::include_graphics('~/dev/da-project/images/random-cats.png')
 ```
 
@@ -324,7 +347,7 @@ the diverse sampling method underperforms is that it tends to select rather
 unique images that are unlike the others, and the model overfits to those 
 images. 
 
-## Other Related Work
+## 2.2 Other Related Work
 
 \citet{wang2018data} proposed a two-round training approach to better fit 
 CNNs on a subset of the training set. In their approach, A CNN was fit on a 
@@ -381,9 +404,9 @@ scenario, the data collection process would involve creating new images (e.g.,
 by taking photographs). It is also not clear how we can go from a point in the 
 embedding space (GIST or otherwise) to an actual image.
 
-# Proposed Methods and Results
+# 3 Proposed Methods and Results
 
-## Data Editing
+## 3.1 Data Editing
 
 We used Wilson editing to remove "outliers" from the training set before 
 subsampling using the diverse sampling method. The random and similar 
@@ -459,7 +482,7 @@ cifar10.edited.df %>%
         legend.background = element_blank())
 ```
 
-## Clustering
+## 3.2 Clustering
 
 The motivations behind clustering the training data embeddings are twofold: 
 First, by drawing data uniformly across each cluster, we can draw samples that 
@@ -473,7 +496,7 @@ each class. This was compared against random sampling (without using any
 cluster information). Our results suggest that these training subset selection 
 methods result in equivalent model performance
 
-```{r cifar10_clustered, fig.cap = 'Cluster-based sampling experiment on CIFAR-10. The $x$-axis is on the log-scale. Errobars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
+```{r cifar10_clustered, fig.cap = 'Cluster-based sampling experiment on CIFAR-10. The $x$-axis is on the log-scale. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
 cifar10.clustered.df %>% 
   dplyr::filter(train_set_type != 'diverse by cluster') %>% 
   dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
@@ -499,7 +522,7 @@ cifar10.clustered.df %>%
         legend.background = element_blank())
 ```
 
-## Transfer Learning
+## 3.3 Transfer Learning
 
 GIST and GIST-based embeddings have been used to fit high-performing image 
 classification models \cite{Torralba2003b} 
@@ -517,23 +540,38 @@ $\mathbb{R}^q$ where $q$ is the number of nodes of the layer, then the last
 layer performs multinomial logistic regression to assign a predicted label to 
 each point in that space. A perfectly accurate CNN model will then produce an 
 embedding such that the classes are linearly separable. Using this as our 
-motivation, we constructed an embedding of CIFAR-10 images based on the Inception V3 \cite{43022} network that has been pre-trained[^keras] on the ImageNet \cite{imagenet_cvpr09} dataset. The Inception V3 embedding was then used to draw training subsamples. This is not a realistic use-case as the CIFAR-10 labels are a subset of the ImageNet labels, but this hopefully serves as an "oracle" embedding 
+motivation, we constructed an embedding of CIFAR-10 images based on the Inception V3 \cite{43022} network that has been pre-trained[^keras] on the ImageNet \cite{imagenet_cvpr09} dataset. The Inception V3 embedding was then used to draw training subsamples. This is not a realistic use-case as the CIFAR-10 labels are a subset of the ImageNet labels, but this hopefully serves as an "oracle" embedding[^inception].
 
 [^dims]: GIST features are in $\mathbb{R}^{960}$ while pixel features for CIFAR-10  are in $\mathbb{R}^{3072}$.
 
 [^keras]: Pretrained model provided by the Keras \cite{chollet2015keras} 
 package.
 
+[^inception]: A cross-validated $5$-nearest neighbors model using this 
+embedding results in approximately 80\% accuracy, compared to approximately 
+60\% accuracy using the GIST embedding.
 
+The subsampling methods used here are:
 
-```{r cifar10_transfer, fig.cap = ''}
+1. Diverse sampling based on maximal interpoint distances
+2. Uniform random sampling
+3. Wilson editing followed by diverse sampling
+4. Stratified by cluster (based on $5$-means clustering)
+5. Wilson editing followed by cluster-stratified sampling
+
+```{r cifar10_transfer, fig.cap = 'Results from various experiments on drawing training images using the Inception V3 embedding. The $x$-axis is on the log-scale. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
 cifar10.translearn.df %>% 
-  dplyr::filter(train_set_type != 'diverse by cluster') %>% 
-  dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
-                                        'random', 'by cluster')) %>% 
+  dplyr::filter(train_set_type != 'similar') %>%
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
+  dplyr::mutate(
+    train_set_type = factor(train_set_type, 
+                            levels = c('diverse', 
+                                       'random',
+                                       'diverse with editing', 
+                                       'by cluster', 
+                                       'edited and by cluster'))) %>% 
   ggplot() + 
   scale_x_log10() +
   # scale_y_log10() + 
@@ -548,13 +586,87 @@ cifar10.translearn.df %>%
        colour = NULL) + 
   theme(legend.key.width = unit(1, 'mm'),
         text = element_text(size = 9),
-        legend.position = c(.8, .25),
+        legend.position = c(.85, .3),
         legend.background = element_blank())
 ```
 
-## Summary of Results
+```{r embed_compare, fig.cap = 'Comparison of sampling CIFAR-10 images using GIST and Inception V3 embeddings. The $x$-axis is on the log-scale. Errorbars indicate $\\pm 1$ standard deviation from the mean of 10 repetitions.'}
+dplyr::bind_rows(
+  cifar10.translearn.df %>% 
+    dplyr::filter(train_set_type != 'similar') %>%
+    dplyr::group_by(train_size, train_set_type) %>% 
+    dplyr::summarise(mean.acc = mean(accuracy),
+                     sd.acc = sd(accuracy)) %>% 
+  dplyr::mutate(embedding = 'inception v3'),
+  cifar10.val.from.train.df %>% 
+    dplyr::bind_rows(
+      cifar10.edited.df %>%
+        dplyr::filter(train_set_type %in% c('diverse', 'random')) %>%
+        dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
+                                              'random', 
+                                              'diverse with editing'))) %>%
+    dplyr::bind_rows(
+      cifar10.clustered.df %>%
+        dplyr::filter(train_set_type %in% c('random by cluster', 'random')) %>%
+        dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
+                                              'random', 'by cluster'))) %>%
+    dplyr::bind_rows(
+      cifar10.translearn.df %>% 
+        dplyr::filter(train_set_type %in% c('random by cluster', 'random')) %>% 
+        dplyr::mutate(
+          train_set_type = ifelse(train_set_type == 'random', 
+                                  'random', 'transfer learning'))) %>%
+    dplyr::group_by(train_size, train_set_type) %>%
+    dplyr::summarise(mean.acc = mean(accuracy),
+                     sd.acc = sd(accuracy)) %>% 
+    dplyr::mutate(embedding = 'gist')
+) %>%
+  dplyr::filter(train_size %in% c(10, 20, 40, 60, 80, 
+                                  100, 200, 250, 500)) %>% 
+  dplyr::filter(train_set_type != 'similar') %>% 
+  dplyr::filter(train_set_type != 'edited and by cluster') %>% 
+  ggplot() + 
+  scale_x_log10() +
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, 
+                # colour = train_set_type,
+                linetype = embedding)) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    # colour = train_set_type,
+                    linetype = embedding),
+                width = .05) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(3, 'mm'),
+        text = element_text(size = 9),
+        # legend.position = c(.85, .25),
+        legend.background = element_blank()) + 
+  facet_wrap(~ train_set_type)
+```
 
-```{r, fig.width = 5, fig.height = 4}
+The results are largely consistent with those from using GIST embeddings. 
+For a large enough training subsample, the methods converge to the same test 
+accuracy, and for smaller subsamples, random and cluster-based sampling results 
+in equivalent performance while diverse sampling results in reduced 
+performance (Fig. \ref{fig:cifar10_transfer}). Our results further suggest that 
+there is no significant difference between using the GIST embedding or the 
+Inception V3 embedding for subsampling training data (Fig. \ref{fig:embed_compare}).
+
+# 4 Conclusions and Future Work
+
+We failed to find a sampling method for images that outperforms uniform random 
+sampling. In fact, an attempt at drawing a "diverse" set of images results in 
+reduced performance. We further demonstrated that Wilson data editing on the
+training set may improve performance and cluster-stratified sampling is on par 
+with random sampling. As expected, "similar" training subsets resulted in
+significantly poorer performance than the other methods (Fig.
+\ref{fig:compare}).
+
+```{r compare, fig.width = 6, fig.height = 4, fig.cap = 'Comparison of the various image sampling methods and the resulting model performance on the CIFAR-10 test set.'}
 cifar10.val.from.train.df %>% 
   dplyr::bind_rows(
     cifar10.edited.df %>%
@@ -604,12 +716,19 @@ cifar10.val.from.train.df %>%
         legend.background = element_blank())
 ```
 
-# Conclusions and Future Work
+\citet{NIPS2018_7396} suggested clustering the embedded images and drawing 
+representative samples from each cluster. Our results show that 
+cluster-straified sampling is not significantly better than random sampling, 
+but we only tried one type of clustering and simply drew cluster-stratified 
+samples. Future work may involve more sophisticated clustering techniques and 
+identifying images that are representative or characteristic of each cluster.
+
+Based on work by \citet{wang2018data} and \citet{kaushal2019learning}, future
+work may involve an active learning based approach using iterative 
+CNN-generated embeddings. 
 
 ```{r one_col, results='asis'}
-cat('\\onecolumn')
+# cat('\\onecolumn')
 ```
-
-\newpage
 
 # References
