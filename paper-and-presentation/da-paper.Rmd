@@ -4,14 +4,15 @@ title:
   Image Classification
 subtitle: Department of Statistics Data Analysis Qualifying Exam
 author:
-  - David Crandall
-  - John Koo
-  - Michael Trosset
+- David Crandall
+- John Koo
+- Michael Trosset
 date: December 16, 2019
 output: 
   pdf_document:
+    number_sections: yes
     citation_package: natbib
-  # html_document
+    latex_engine: pdflatex
 bibliography: da-paper.bib
 # geometry: "left=1cm,right=1cm,top=1cm,bottom=1.5cm"
 urlcolor: blue
@@ -127,7 +128,7 @@ cifar10.translearn.df <- dplyr::bind_rows(
   dplyr::filter(train_size <= 500)
 ```
 
-# 1 Introduction
+# Introduction
 
 LeNet-5, 1998 \cite{Lecun98gradient-basedlearning}, was the first widely
 recognized CNN architecture for image classification. Consisting of only seven
@@ -159,7 +160,7 @@ attempting to come up with new methods based on some of the ideas put forth by
 the original study. The new methods we propose in this paper fail to outperform 
 uniform random sampling.
 
-# 2 Previous Work
+# Previous Work
 
 \citet{NIPS2018_7396} demonstrated that given a large pool of images 
 and a fixed training set size, it is possible to tailor the training set for 
@@ -172,7 +173,7 @@ showed that model performance correlated positively with object size in the
 training set, and training sets consisting of "diverse" images tended to 
 outperform those consisting of "similar" images. 
 
-## 2.1 Replication Study
+## Replication Study
 
 The data in the above study is as follows:
 
@@ -347,7 +348,7 @@ the diverse sampling method underperforms is that it tends to select rather
 unique images that are unlike the others, and the model overfits to those 
 images. 
 
-## 2.2 Other Related Work
+## Other Related Work
 
 \citet{wang2018data} proposed a two-round training approach to better fit 
 CNNs on a subset of the training set. In their approach, A CNN was fit on a 
@@ -404,9 +405,9 @@ scenario, the data collection process would involve creating new images (e.g.,
 by taking photographs). It is also not clear how we can go from a point in the 
 embedding space (GIST or otherwise) to an actual image.
 
-# 3 Proposed Methods and Results
+# Methods and Results
 
-## 3.1 Data Editing
+## Data Editing
 
 We used Wilson editing to remove "outliers" from the training set before 
 subsampling using the diverse sampling method. The random and similar 
@@ -482,7 +483,7 @@ cifar10.edited.df %>%
         legend.background = element_blank())
 ```
 
-## 3.2 Clustering
+## Clustering
 
 The motivations behind clustering the training data embeddings are twofold: 
 First, by drawing data uniformly across each cluster, we can draw samples that 
@@ -522,7 +523,7 @@ cifar10.clustered.df %>%
         legend.background = element_blank())
 ```
 
-## 3.3 Transfer Learning
+## Transfer Learning
 
 GIST and GIST-based embeddings have been used to fit high-performing image 
 classification models \cite{Torralba2003b} 
@@ -656,7 +657,7 @@ performance (Fig. \ref{fig:cifar10_transfer}). Our results further suggest that
 there is no significant difference between using the GIST embedding or the 
 Inception V3 embedding for subsampling training data (Fig. \ref{fig:embed_compare}).
 
-# 4 Conclusions and Future Work
+# Conclusions and Future Work
 
 We failed to find a sampling method for images that outperforms uniform random 
 sampling. In fact, an attempt at drawing a "diverse" set of images results in 
