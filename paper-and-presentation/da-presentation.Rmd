@@ -1,0 +1,141 @@
+---
+title: 
+  Experiments Around Training Data Selection Methods for 
+  Image Classification
+subtitle: Department of Statistics Data Analysis Qualifying Exam
+author: 
+  David Crandall
+  John Koo
+  Michael Trosset
+# output: ioslides_presentation
+output: 
+  beamer_presentation:
+    theme: 'default'
+    colortheme: 'beaver'
+    includes:
+      in_header: page_headers.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      comment = NA, 
+                      warning = FALSE, 
+                      message = FALSE)
+
+options(xtable.comment = FALSE, 
+        xtable.table.placement = 'H')
+
+library(ggplot2)
+import::from(magrittr, `%>%`)
+theme_set(theme_bw())
+```
+
+```{r data_ingest}
+dogs.diversity.path <- 
+  '~/dev/da-project/misc/stanford-dogs/results-diversity.csv'
+dogs.size.path <- 
+  '~/dev/da-project/misc/stanford-dogs/results-size.csv'
+dogs.diversity.df <- readr::read_csv(dogs.diversity.path)
+dogs.size.df <- readr::read_csv(dogs.size.path)
+
+
+cifar10.path <- '~/dev/da-project/cifar-results.csv'
+mnist.path <- '~/dev/da-project/mnist-results.csv'
+cifar10.small.path <- '~/dev/da-project/cifar-results-small-data.csv'
+mnist.small.path <- '~/dev/da-project/mnist-results-small-data.csv'
+cifar10.df <- readr::read_csv(cifar10.path)
+mnist.df <- readr::read_csv(mnist.path)
+cifar10.small.df <- readr::read_csv(cifar10.small.path)
+mnist.small.df <- readr::read_csv(mnist.small.path)
+cifar10.df <- dplyr::bind_rows(cifar10.df, cifar10.small.df)
+mnist.df <- dplyr::bind_rows(mnist.df, mnist.small.df)
+
+
+cifar10.val.from.train.path <- file.path('~/dev/da-project',
+                                         'subset-validation-from-training',
+                                         'cifar10-constrained-val-results.csv')
+mnist.val.from.train.path <- file.path('~/dev/da-project', 
+                                       'subset-validation-from-training',
+                                       'mnist-constrained-val-results.csv')
+cifar10.val.from.train.df <- readr::read_csv(cifar10.val.from.train.path)
+mnist.val.from.train.df <- readr::read_csv(mnist.val.from.train.path)
+
+cifar10.edited.path <- file.path(
+  '~/dev/da-project',
+  'edited-training-data', 
+  'cifar10-edited5nn-training-results.csv')
+cifar10.edited.df <- readr::read_csv(cifar10.edited.path)
+
+cifar10.clustered.path <- 
+  '~/dev/da-project/kmeans-sampling/cifar10-kmeans-results.csv'
+cifar10.clustered.df <- readr::read_csv(cifar10.clustered.path)
+cifar10.clustered.edited.path <- 
+  '~/dev/da-project/kmeans-sampling/cifar10-kmeans-edited-results.csv'
+cifar10.clustered.edited.df <- readr::read_csv(cifar10.clustered.edited.path)
+```
+
+# Problem Statement and Objective
+
+* Spurned on by both a wealth of image data and computational resources,
+deep convolutional neural networks are now widely used for image classification
+models
+* CNNs may fit poorly when there is insufficient data.
+
+# Background: "Toddler-Inspired Visual Object Learning" (Crandall et al., 2018)
+
+* Compared images taken by first-person cameras mounted on toddlers and parents
+* Found that training VGG16 using toddler data resulted in higher test accuracy
+than training on parent data (same test set in both cases)
+
+```{r, out.width = '37.5%', fig.align = 'center'}
+knitr::include_graphics('fig-4b.png')
+```
+
+# Background: "Toddler-Inspired Visual Object Learning" (Crandall et al., 2018)
+
+* Distilled the differences in the datasets into two components: object size 
+(how much of the image does the object take up) and image "diversity" (hard to
+measure)
+* Subsampled the images to obtain training subsets of:
+    * big objects
+    * small objects
+    * diverse images
+    * similar images
+    * random subset
+* Image similarity/distance based on an image embedding method (GIST features)
+* Cropped images to simulate multiple focal lengths
+* Found that when objects are larger or when images are more diverse, test 
+accuracy improves
+
+# Background: "Toddler-Inspired Visual Object Learning" (Crandall et al., 2018)
+
+::: columns
+
+:::: column
+```{r, out.width = '100%', fig.align = 'center'}
+knitr::include_graphics('fig-5b.png')
+```
+::::
+
+:::: column
+```{r, out.width = '100%', fig.align = 'center'}
+knitr::include_graphics('fig-6c.png')
+```
+::::
+
+:::
+
+# Outline and Summary
+
+1. Replication studies
+2. New methods for training data selection
+3. Results
+4. Conclusions and future work
+
+# Replication Study: Stanford Dogs dataset
+
+# Replication Study: CIFAR-10
+
+# Wilson Editing
+
+# Clustering
