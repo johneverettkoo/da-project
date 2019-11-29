@@ -3,10 +3,7 @@ title:
   Experiments Around Training Data Selection Methods for 
   Image Classification
 subtitle: Department of Statistics Data Analysis Qualifying Exam
-author: 
-  David Crandall
-  John Koo
-  Michael Trosset
+author: John Koo
 # output: ioslides_presentation
 output: 
   beamer_presentation:
@@ -28,6 +25,8 @@ options(xtable.comment = FALSE,
 library(ggplot2)
 import::from(magrittr, `%>%`)
 theme_set(theme_bw())
+
+z <- 1
 ```
 
 ```{r data_ingest}
@@ -72,28 +71,61 @@ cifar10.clustered.df <- readr::read_csv(cifar10.clustered.path)
 cifar10.clustered.edited.path <- 
   '~/dev/da-project/kmeans-sampling/cifar10-kmeans-edited-results.csv'
 cifar10.clustered.edited.df <- readr::read_csv(cifar10.clustered.edited.path)
+
+cifar10.transfer.path <- file.path(
+  '~/dev/da-project/transfer-learning',
+  'cifar10-transfer-learning-results.csv')
+cifar10.transfer.edit.path <- file.path(
+  '~/dev/da-project/transfer-learning',
+  'cifar10-transfer-learning-edited-results.csv')
+cifar10.transfer.cluster.path <- file.path(
+  '~/dev/da-project/transfer-learning',
+  'cifar10-transfer-learning-kmeans-results.csv')
+cifar10.transfer.edit.cluster.path <- file.path(
+  '~/dev/da-project/transfer-learning',
+  'cifar10-transfer-learning-edited-kmeans-results.csv')
+cifar10.translearn.df <- dplyr::bind_rows(
+  readr::read_csv(cifar10.transfer.path),
+  readr::read_csv(cifar10.transfer.edit.path) %>% 
+    dplyr::filter(train_set_type != 'similar') %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'random',
+                                          'random', 
+                                          'diverse with editing')),
+  readr::read_csv(cifar10.transfer.cluster.path) %>% 
+    dplyr::filter(train_set_type != 'diverse by cluster') %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'random',
+                                          'random',
+                                          'by cluster')),
+  readr::read_csv(cifar10.transfer.edit.cluster.path) %>% 
+    dplyr::filter(train_set_type != 'diverse by cluster') %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'random',
+                                          'random',
+                                          'edited and by cluster'))
+) %>% 
+  dplyr::filter(train_size <= 500)
 ```
 
 # Problem Statement and Objective
 
-* Spurned on by both a wealth of image data and computational resources,
-deep convolutional neural networks are now widely used for image classification
-models
-* CNNs may fit poorly when there is insufficient data, and the data collection 
-and labelling process can be expensive
+> - Deep convolutional neural networks make use of the current wealth of 
+curated image datasets and computational resources
+> - CNNs may fit poorly when there is insufficient data, and the data 
+collection and labelling process can be expensive
+> - Goal: Determine a training set sampling method to select the best possible 
+images under a fixed training set size
+> - Largely based on a paper by Crandall et al. (2018)
 
-
-# Background: "Toddler-Inspired Visual Object Learning" (Crandall et al., 2018)
+# Background: "Toddler-Inspired Visual Object Learning"
 
 * Compared images taken by first-person cameras mounted on toddlers and parents
-* Found that training VGG16 using toddler data resulted in higher test accuracy
+* Training VGG16 using toddler data resulted in higher test accuracy
 than training on parent data (same test set in both cases)
 
 ```{r, out.width = '37.5%', fig.align = 'center'}
 knitr::include_graphics('fig-4b.png')
 ```
 
-# Background: "Toddler-Inspired Visual Object Learning" (Crandall et al., 2018)
+# Background: "Toddler-Inspired Visual Object Learning"
 
 * Distilled the differences in the datasets into two components: object size 
 (how much of the image does the object take up) and image "diversity" (hard to
@@ -104,12 +136,11 @@ measure)
     * diverse images
     * similar images
     * random subset
-* Image similarity/distance based on an image embedding method (GIST features)
-* Cropped images to simulate multiple focal lengths
+* Image similarity/distance based on an image embedding (GIST features)
 * Found that when objects are larger or when images are more diverse, test 
 accuracy improves
 
-# Background: "Toddler-Inspired Visual Object Learning" (Crandall et al., 2018)
+# Background: "Toddler-Inspired Visual Object Learning"
 
 ::: columns
 
@@ -136,8 +167,364 @@ knitr::include_graphics('fig-6c.png')
 
 # Replication Study: Stanford Dogs dataset
 
+* 20,000 images of 120 dog breeds
+* 100 images per breed set aside for training
+    * further subdivided into 50-50 big/small or diverse/similar
+* 25 images per breed set aside for validation
+* Remainder for testing
+
+```{r dogs, out.width = '33%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/n02113799_2248.jpg')
+```
+
+# Replication Study: Stanford Dogs dataset
+
+* Some evidence that object size affects training
+* No significant evidence that image diversity affects training
+
+::: columns
+
+:::: column
+```{r dogs_size}
+dogs.size.df %>% 
+  dplyr::mutate(size = ifelse(size == 'high', 'big', 'small')) %>% 
+  dplyr::group_by(fov, size) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = fov, y = mean.acc, colour = size),
+            size = 2) + 
+  geom_errorbar(aes(x = fov, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = size),
+                width = 1,
+                size = 2) + 
+  labs(x = 'field of view', 
+       y = 'test accuracy', 
+       colour = NULL) + 
+  theme(legend.key.width = unit(2, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.8, .25),
+        legend.background = element_blank()) + 
+  ylim(0, .3)
+```
+::::
+
+:::: column
+```{r dogs_diverse}
+dogs.diversity.df %>% 
+  dplyr::group_by(fov, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = fov, y = mean.acc, colour = train_set_type), 
+            size = 2) + 
+  geom_errorbar(aes(x = fov, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type),
+                width = 1, 
+                size = 2) + 
+  labs(x = 'field of view', 
+       y = 'test accuracy', 
+       colour = NULL) + 
+  theme(legend.key.width = unit(2, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.8, .25),
+        legend.background = element_blank()) + 
+  ylim(0, .3)
+```
+::::
+
+:::
+
 # Replication Study: CIFAR-10
+
+CIFAR-10
+
+* $32 \times 32$ RGB images of 10 different object classes
+* 5,000 training and 1,000 testing images per class
+* No bounding box information
+    * Diversity experiment only
+    * No adjusting field of view
+
+Sampling method
+
+1. Choose training size $n$
+2. Draw $2 n$ images using diverse, similar, or random sampling
+3. Split the data in half for training and validation 
+4. Fit VGG16 and assess accuracy on the test set
+
+# Replication Study: CIFAR-10
+
+```{r cifar10_classes, out.width = '75%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/cifar-10.png')
+```
+
+# Replication Study: CIFAR-10
+
+```{r cifar10_diversity}
+cifar10.val.from.train.df %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type),
+            size = 1) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type),
+                size = 1) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(1, 'mm'),
+        text = element_text(size = 24),
+        legend.position = c(.85, .25),
+        legend.background = element_blank())
+```
+
+# New Approaches to Training Set Selection
+
+```{r pipeline, fig.align = 'center', out.width = '75%'}
+knitr::include_graphics('~/dev/da-project/images/pipeline.png')
+```
 
 # Wilson Editing
 
+* Originally developed for $k$-nearest neighbors
+
+* Algorithm
+
+    1. Start with a sample $X_1, ..., X_n \in \mathbb{R}^p$ and corresponding 
+    discrete labels $Y_1, ..., Y_n \in \{1, ..., q\}$
+    2. For $i = 1, ..., n$, determine $\hat{Y}_i$ using leave-one-out 
+    cross-validated $k$-nearest neighbors classification
+    3. Discard $i \in \{1, ..., n\}$ where $Y_i \neq \hat{Y}_i$ to construct a 
+    reduced, "edited" training set
+    4. Use the edited training set to fit a new $k$-nearest neighbors model
+
+* Outperforms "unedited" $k$-nearest neighbors (comparing risk on a held-out 
+test set)
+
+# Wilson Editing
+
+* Algorithm
+
+    1. Use Wilson editing (using the GIST embedding) to reduce the training set 
+    2. For a training size $n$, draw a diverse sample from the edited training 
+    set
+    3. Fit VGG16 on the diverse, edited training subset
+    4. Assess model performance on the test set
+
+* Idea: Draw a diverse sample while excluding "outliers"
+
+# Wilson Editing
+
+::: columns
+
+:::: column
+Editing done prior to drawing diverse samples
+
+```{r cifar10_edited}
+cifar10.edited.df %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type),
+            size = 2) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type),
+                size = 2) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(2, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.85, .2),
+        legend.background = element_blank()) + 
+  ylim(.1, .8)
+```
+::::
+
+:::: column
+Effect of editing prior to drawing diverse samples
+
+```{r edited_vs_unedited}
+cifar10.edited.df %>% 
+  dplyr::filter(train_set_type == 'diverse') %>% 
+  dplyr::inner_join(cifar10.val.from.train.df, 
+                    by = c('train_size', 'train_set_type')) %>%
+  dplyr::group_by(train_size) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy.y), 
+                   mean.acc.edited = mean(accuracy.x),
+                   sd.acc = sd(accuracy.y), 
+                   sd.acc.edited = sd(accuracy.x)) %>% 
+  ggplot() + 
+  scale_x_log10() + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = 'not edited'),
+            size = 2) + 
+  geom_line(aes(x = train_size, y = mean.acc.edited, colour = 'edited'),
+            size = 2) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc,
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = 'not edited'),
+                size = 2) + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc.edited - z * sd.acc.edited, 
+                    ymax = mean.acc.edited + z * sd.acc.edited, 
+                    colour = 'edited'),
+                size = 2) + 
+  labs(x = 'training set size per class', y = 'test accuracy', 
+       colour = NULL) + 
+  theme(legend.key.width = unit(2, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.85, .2),
+        legend.background = element_blank()) + 
+  ylim(.1, .8)
+```
+::::
+
+:::
+
 # Clustering
+
+::: columns
+
+:::: column
+Algorithm
+
+1. Use $k$-means clustering (using the GIST embedding) to split each class 
+into "subclasses"
+2. For a training size $n$, draw a cluster/subclass-stratified sample
+3. Fit VGG16 on the stratified training subset
+4. Assess model performance on the test set
+::::
+
+:::: column
+```{r cifar10_clustered}
+cifar10.clustered.df %>% 
+  dplyr::filter(train_set_type != 'diverse by cluster') %>% 
+  dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
+                                        'random', 'by cluster')) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  ggplot() + 
+  scale_x_log10() +
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type),
+            size = 2) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type),
+                size = 2) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(2, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.8, .25),
+        legend.background = element_blank())
+```
+::::
+
+:::
+
+# Summary and Conclusions
+
+::: columns
+
+:::: column
+* Diverse sampling outperforms similar sampling but fails to improve upon 
+uniform random sampling
+* Removing outlier images prior to drawing a diverse sample seems to improve 
+model performance
+* Cluster-stratified sampling resulted in equivalent model performance as 
+uniform random sampling
+* Future work
+    * More sophisticated clustering methods
+    * Active learning based approaches
+::::
+
+:::: column
+Comparison of sampling methods
+```{r compare}
+cifar10.val.from.train.df %>% 
+  dplyr::bind_rows(
+    cifar10.edited.df %>%
+      dplyr::filter(train_set_type %in% c('diverse', 'random')) %>%
+      dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
+                                            'random', 
+                                            'diverse with editing'))) %>%
+  dplyr::bind_rows(
+    cifar10.clustered.df %>%
+      dplyr::filter(train_set_type %in% c('random by cluster', 'random')) %>%
+      dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
+                                            'random', 'by cluster'))) %>%
+  dplyr::bind_rows(
+    cifar10.translearn.df %>% 
+      dplyr::filter(train_set_type %in% c('random by cluster', 'random')) %>% 
+      dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
+                                            'random', 'transfer learning'))) %>%
+  dplyr::group_by(train_size, train_set_type) %>%
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>%
+  dplyr::filter(train_size %in% c(10, 20, 40, 60, 80, 
+                                  100, 200, 250, 500)) %>% 
+  dplyr::mutate(train_set_type = factor(train_set_type, 
+                                        levels = c('diverse', 
+                                                   'similar',
+                                                   'random',
+                                                   'diverse with editing', 
+                                                   'by cluster',
+                                                   'transfer learning'))) %>% 
+  ggplot() + 
+  scale_x_log10() +
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type),
+            size = 2) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type,
+                    fill = train_set_type),
+                width = .05,
+                size = 2) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(2, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.8, .25),
+        legend.background = element_blank())
+```
+::::
+
+:::
+
+# Additional Slides
+
+# GIST Embedding
+
+# Autoencoders
+
+# Transfer Learning

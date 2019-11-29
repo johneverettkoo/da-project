@@ -351,9 +351,9 @@ images.
 ## Other Related Work
 
 \citet{wang2018data} proposed a two-round training approach to better fit 
-CNNs on a subset of the training set. In their approach, A CNN was fit on a 
+CNNs on a subset of the training set. In their approach, a CNN was fit on a 
 large training set, then for each image in the training set, an influence 
-measure was computed over all images in the validation set. If the influence 
+measure was computed over all images in a validation set. If the influence 
 was negative, then that training image was discarded. The CNN was then fit 
 again using the reduced training set, and the resulting model was observed to 
 achieve a higher test accuracy than the original model trained prior to 
@@ -659,8 +659,14 @@ Inception V3 embedding for subsampling training data (Fig. \ref{fig:embed_compar
 
 # Conclusions and Future Work
 
+In our work, we attempted to replicate the results of \citet{NIPS2018_7396} on 
+separate datasets. Then we tried to expand upon their methods via data editing 
+and cluster-stratified sampling. These methods were compared against diverse 
+and similar sampling methods based on GIST embeddings as well as uniform random 
+sampling. 
+
 We failed to find a sampling method for images that outperforms uniform random 
-sampling. In fact, an attempt at drawing a "diverse" set of images results in 
+sampling. In fact, our attempt at drawing a "diverse" set of images results in 
 reduced performance. We further demonstrated that Wilson data editing on the
 training set may improve performance and cluster-stratified sampling is on par 
 with random sampling. As expected, "similar" training subsets resulted in
@@ -724,9 +730,9 @@ but we only tried one type of clustering and simply drew cluster-stratified
 samples. Future work may involve more sophisticated clustering techniques and 
 identifying images that are representative or characteristic of each cluster.
 
-Based on work by \citet{wang2018data} and \citet{kaushal2019learning}, future
-work may involve an active learning based approach using iterative 
-CNN-generated embeddings. 
+Based on work by \citet{wang2018data} and \citet{kaushal2019learning} as well 
+as our embedding-based approaches, future attempts may involve active learning
+based methods using iterative CNN-generated embeddings. 
 
 ```{r one_col, results='asis'}
 # cat('\\onecolumn')
