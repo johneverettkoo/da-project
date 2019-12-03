@@ -264,6 +264,26 @@ Sampling method
 knitr::include_graphics('~/dev/da-project/images/cifar-10.png')
 ```
 
+# Diverse vs. Similar Samples from a Point Cloud
+
+```{r out.width = '75%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/pointcloud.png')
+```
+
+# Diverse vs. Similar vs. Random Samples of CIFAR-10 Cats
+
+```{r out.width = '50%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/diverse-cats.png')
+```
+
+```{r out.width = '50%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/similar-cats.png')
+```
+
+```{r out.width = '50%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/random-cats.png')
+```
+
 # Replication Study: CIFAR-10
 
 ```{r cifar10_diversity}
