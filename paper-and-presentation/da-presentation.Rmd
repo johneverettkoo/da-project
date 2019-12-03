@@ -523,6 +523,8 @@ cifar10.val.from.train.df %>%
 
 # Additional Slides
 
+# VGG16
+
 # GIST Embedding
 
 # Autoencoders
