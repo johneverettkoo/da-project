@@ -18,7 +18,8 @@ output:
 knitr::opts_chunk$set(echo = FALSE, 
                       comment = NA, 
                       warning = FALSE, 
-                      message = FALSE)
+                      message = FALSE,
+                      fig.lp = '')
 
 options(xtable.comment = FALSE, 
         xtable.table.placement = 'H')
@@ -110,11 +111,15 @@ cifar10.translearn.df <- dplyr::bind_rows(
 
 > - Deep convolutional neural networks make use of the current wealth of 
 curated image datasets and computational resources
+
 > - CNNs may fit poorly when there is insufficient data, and the data 
 collection and labelling process can be expensive
+
 > - Goal: Determine a training set sampling method to select the best possible 
 images under a fixed training set size
-> - Largely based on a paper by Crandall et al. (2018)
+
+> - Largely based on "Toddler-Inspired Visual Object Learning" by Bambach, 
+Crandal, Smith, and Yu (2018)
 
 # Background: "Toddler-Inspired Visual Object Learning"
 
@@ -169,7 +174,7 @@ knitr::include_graphics('fig-6c.png')
 
 # Replication Study: Stanford Dogs dataset
 
-* 20,000 images of 120 dog breeds
+* ~20,000 images of 120 dog breeds
 * 100 images per breed set aside for training
     * further subdivided into 50-50 big/small or diverse/similar
 * 25 images per breed set aside for validation
