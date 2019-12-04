@@ -3,6 +3,7 @@ title:
   Experiments Around Training Data Selection Methods for 
   Image Classification
 subtitle: Department of Statistics Data Analysis Qualifying Exam
+date: 'December 16, 2019'
 author: John Koo
 # output: ioslides_presentation
 output: 
@@ -160,10 +161,11 @@ knitr::include_graphics('fig-6c.png')
 
 # Outline and Summary
 
-1. Replication studies
-2. New methods for training data selection
-3. Results
-4. Conclusions and future work
+> 1. Replication studies
+
+> 2. New methods for training data selection
+
+> 3. Conclusions and future work
 
 # Replication Study: Stanford Dogs dataset
 
@@ -173,9 +175,21 @@ knitr::include_graphics('fig-6c.png')
 * 25 images per breed set aside for validation
 * Remainder for testing
 
-```{r dogs, out.width = '33%', fig.align = 'center'}
+::: columns
+
+:::: column
+```{r, out.width = '50%', fig.align = 'center'}
 knitr::include_graphics('~/dev/da-project/images/n02113799_2248.jpg')
 ```
+::::
+
+:::: column
+```{r, out.width = '50%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/n02115641_8578.jpg')
+```
+::::
+
+::: 
 
 # Replication Study: Stanford Dogs dataset
 
@@ -204,7 +218,7 @@ dogs.size.df %>%
   labs(x = 'field of view', 
        y = 'test accuracy', 
        colour = NULL) + 
-  theme(legend.key.width = unit(2, 'mm'),
+  theme(legend.key.width = unit(5, 'mm'),
         text = element_text(size = 32),
         legend.position = c(.8, .25),
         legend.background = element_blank()) + 
@@ -231,7 +245,7 @@ dogs.diversity.df %>%
   labs(x = 'field of view', 
        y = 'test accuracy', 
        colour = NULL) + 
-  theme(legend.key.width = unit(2, 'mm'),
+  theme(legend.key.width = unit(5, 'mm'),
         text = element_text(size = 32),
         legend.position = c(.8, .25),
         legend.background = element_blank()) + 
@@ -305,7 +319,7 @@ cifar10.val.from.train.df %>%
   labs(x = 'training set size per class', 
        y = 'test accuracy',
        colour = NULL) + 
-  theme(legend.key.width = unit(1, 'mm'),
+  theme(legend.key.width = unit(5, 'mm'),
         text = element_text(size = 24),
         legend.position = c(.85, .25),
         legend.background = element_blank())
@@ -372,7 +386,7 @@ cifar10.edited.df %>%
   labs(x = 'training set size per class', 
        y = 'test accuracy',
        colour = NULL) + 
-  theme(legend.key.width = unit(2, 'mm'),
+  theme(legend.key.width = unit(5, 'mm'),
         text = element_text(size = 32),
         legend.position = c(.85, .2),
         legend.background = element_blank()) + 
@@ -412,7 +426,7 @@ cifar10.edited.df %>%
                 size = 2) + 
   labs(x = 'training set size per class', y = 'test accuracy', 
        colour = NULL) + 
-  theme(legend.key.width = unit(2, 'mm'),
+  theme(legend.key.width = unit(5, 'mm'),
         text = element_text(size = 32),
         legend.position = c(.85, .2),
         legend.background = element_blank()) + 
@@ -459,7 +473,7 @@ cifar10.clustered.df %>%
   labs(x = 'training set size per class', 
        y = 'test accuracy',
        colour = NULL) + 
-  theme(legend.key.width = unit(2, 'mm'),
+  theme(legend.key.width = unit(5, 'mm'),
         text = element_text(size = 32),
         legend.position = c(.8, .25),
         legend.background = element_blank())
@@ -532,9 +546,9 @@ cifar10.val.from.train.df %>%
   labs(x = 'training set size per class', 
        y = 'test accuracy',
        colour = NULL) + 
-  theme(legend.key.width = unit(2, 'mm'),
+  theme(legend.key.width = unit(5, 'mm'),
         text = element_text(size = 32),
-        legend.position = c(.8, .25),
+        legend.position = c(.8, .2),
         legend.background = element_blank())
 ```
 ::::
