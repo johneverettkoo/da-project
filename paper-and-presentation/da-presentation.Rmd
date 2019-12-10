@@ -2,7 +2,7 @@
 title: 
   Experiments Around Training Data Selection Methods for 
   Image Classification
-subtitle: Department of Statistics Data Analysis Qualifying Exam
+# subtitle: Department of Statistics Data Analysis Qualifying Exam
 date: 'December 16, 2019'
 author: John Koo
 # output: ioslides_presentation
@@ -119,7 +119,7 @@ collection and labelling process can be expensive
 images under a fixed training set size
 
 > - Largely based on "Toddler-Inspired Visual Object Learning" by Bambach, 
-Crandal, Smith, and Yu (2018)
+Crandall, Smith, and Yu (2018)
 
 # Background: "Toddler-Inspired Visual Object Learning"
 
@@ -560,7 +560,7 @@ cifar10.val.from.train.df %>%
 
 :::
 
-# Additional Slides
+# Supplemental Slides
 
 # VGG16
 
