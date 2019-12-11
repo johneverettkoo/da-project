@@ -21,7 +21,7 @@ header-includes:
 - \captionsetup[figure]{font=scriptsize}
 - \twocolumn
 abstract: |
-  Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Expanding upon on previous work by Bambach, Crandall, Smith, and Yu \cite{NIPS2018_7396}, our work explores various methods for subsampling training images under a data budget for fitting an image classification model and compares the results against uniform random sampling. The intuition behind our methods is that we would like to sample a "diverse" training set while controlling for the probability of drawing atypical "outlier" images. While our results fail to outperform random sampling, we demonstrate the effects of fitting CNNs on training subsets drawn with varying degrees of diversity and outlyingness, which are measured using GIST-embedded distances.
+  Convolutional neural networks (CNNs) are now widely utilized to fit highly accurate image classification models. However, in order to achieve these results, CNNs require vast amounts of training data, especially as the size of these networks grows in an effort to achieve increasingly better performance. In real-world applications, large amounts of training data are often difficult to obtain due to data collection and labelling limitations or difficult to work with due to computational limitations. Expanding upon on previous work by Bambach, Crandall, Smith, and Yu \cite{NIPS2018_7396}, our work explores various methods for subsampling training images under a data budget for fitting an image classification model and compares the results against uniform random sampling. The intuition behind our methods is that we would like to sample a "diverse" training set while controlling for the probability of drawing atypical "outlier" images. While our results fail to outperform random sampling, we demonstrate the effects of fitting CNNs on training subsets drawn with varying degrees of diversity and outlyingness, which are measured using GIST embedding-based distances \cite{Torralba:2003:CPO:644361.644382}.
 ---
 
 ```{r setup, include = FALSE}
@@ -732,7 +732,7 @@ as our embedding-based approaches, future attempts may involve active learning
 based methods using iterative CNN-generated embeddings. 
 
 ```{r one_col, results='asis'}
-# cat('\\onecolumn')
+cat('\\onecolumn')
 ```
 
 # References

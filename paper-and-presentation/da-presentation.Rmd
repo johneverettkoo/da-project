@@ -312,6 +312,7 @@ Sampling method
 1. Choose training size $n$
 2. Draw $2 n$ images using diverse, similar, or random sampling
 3. Split the data in half for training and validation 
+    * Validation set used to determine when to stop training
 4. Fit VGG16 and assess accuracy on the test set
 
 # Reproduction Study: CIFAR-10
@@ -395,6 +396,16 @@ test set)
     4. Assess model performance on the test set
 
 * Idea: Draw a diverse sample while excluding "outliers"
+
+# Diverse Sample vs. Diverse Sample After Wilson Editing
+
+```{r out.width = '75%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/diverse-cats.png')
+```
+
+```{r out.width = '75%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/diverse-edited-cats.png')
+```
 
 # Wilson Editing
 
