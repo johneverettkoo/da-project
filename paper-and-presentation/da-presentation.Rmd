@@ -108,7 +108,30 @@ cifar10.translearn.df <- dplyr::bind_rows(
   dplyr::filter(train_size <= 500)
 ```
 
-# Background
+# Background: Image Classification
+
+* Most predictive modeling involves some sort of $n \times p$ data matrix
+    * Observations typically thought of as living in $\mathbb{R}^k$
+* Image data are harder to think of in terms of data matrices and Euclidean 
+space
+* Maybe use pixel values as features
+    * Extremely high dimensional
+        * Maybe can exploit spatial correlation to reduce number of dimensions
+    * Doesn't account for image transformations such as translation or rotation
+* Image classification (object/scene detection) doesn't fit well into 
+traditional predictive modeling frameworks
+
+# Background: Convolutional Neural Networks
+
+* Most neural networks are "fully connected", i.e., each node of a layer is 
+connected to every node of the previous layer and every node of the next layer
+* Convolutional layers are locally connected, i.e., nodes point to small, 
+spatially connected groups of nodes
+* Accounts for localized features (e.g., edge detection)
+* CNNs often outperform other image classification methods (but their 
+complexity requires large training sets)
+
+**INSERT IMAGE OF NEURAL NET VS. CNN HERE**
 
 # Problem Statement and Objective
 
@@ -118,8 +141,8 @@ curated image datasets and computational resources
 > - CNNs may fit poorly when there is insufficient data, and the data 
 collection and labelling process can be expensive
 
-> - **Goal**: Determine a training set sampling method to select the best
-possible images under a fixed training set size
+> - **Main question**: Is it possible to successfully train a neural network 
+with a small number of carefully selected images
 
 > - Largely based on "Toddler-Inspired Visual Object Learning" by Bambach, 
 Crandall, Smith, and Yu (2018)
@@ -175,7 +198,7 @@ knitr::include_graphics('fig-6c.png')
 
 > 1. Applying the Toddler study to additional datasets
 
-> 2. Some other ways to select training sets
+> 2. Overview of some other ways to select training sets
 
 > 3. Conclusions and future work
 
