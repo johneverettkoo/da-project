@@ -1,7 +1,5 @@
 ---
-title: 
-  Experiments Around Training Data Selection Methods for 
-  Image Classification
+title: Training Set Selection for Image Classification
 # subtitle: Department of Statistics Data Analysis Qualifying Exam
 date: 'December 16, 2019'
 author: John Koo
@@ -107,6 +105,8 @@ cifar10.translearn.df <- dplyr::bind_rows(
   dplyr::filter(train_size <= 500)
 ```
 
+# Background
+
 # Problem Statement and Objective
 
 > - Deep convolutional neural networks make use of the current wealth of 
@@ -115,8 +115,8 @@ curated image datasets and computational resources
 > - CNNs may fit poorly when there is insufficient data, and the data 
 collection and labelling process can be expensive
 
-> - Goal: Determine a training set sampling method to select the best possible 
-images under a fixed training set size
+> - **Goal**: Determine a training set sampling method to select the best
+possible images under a fixed training set size
 
 > - Largely based on "Toddler-Inspired Visual Object Learning" by Bambach, 
 Crandall, Smith, and Yu (2018)
@@ -133,14 +133,18 @@ knitr::include_graphics('fig-4b.png')
 
 # Background: "Toddler-Inspired Visual Object Learning"
 
+* Objects in images from the toddler sample occupied more of the frame compared 
+to objects in images from the adult sample
+* Toddler 
+
 * Distilled the differences in the datasets into two components: object size 
 (how much of the image does the object take up) and image "diversity" (hard to
 measure)
 * Subsampled the images to obtain training subsets of:
     * big objects
     * small objects
-    * diverse images
-    * similar images
+    * diverse subset
+    * similar subset
     * random subset
 * Image similarity/distance based on an image embedding (GIST features)
 * Found that when objects are larger or when images are more diverse, test 
@@ -166,13 +170,13 @@ knitr::include_graphics('fig-6c.png')
 
 # Outline and Summary
 
-> 1. Replication studies
+> 1. Applying the Toddler study to additional datasets
 
-> 2. New methods for training data selection
+> 2. Some other ways to select training sets
 
 > 3. Conclusions and future work
 
-# Replication Study: Stanford Dogs dataset
+# Reproduction Study: Stanford Dogs dataset
 
 * ~20,000 images of 120 dog breeds
 * 100 images per breed set aside for training
@@ -196,7 +200,7 @@ knitr::include_graphics('~/dev/da-project/images/n02115641_8578.jpg')
 
 ::: 
 
-# Replication Study: Stanford Dogs dataset
+# Reproduction Study: Stanford Dogs dataset
 
 * Some evidence that object size affects training
 * No significant evidence that image diversity affects training
@@ -260,7 +264,7 @@ dogs.diversity.df %>%
 
 :::
 
-# Replication Study: CIFAR-10
+# Reproduction Study: CIFAR-10
 
 CIFAR-10
 
@@ -277,16 +281,10 @@ Sampling method
 3. Split the data in half for training and validation 
 4. Fit VGG16 and assess accuracy on the test set
 
-# Replication Study: CIFAR-10
+# Reproduction Study: CIFAR-10
 
 ```{r cifar10_classes, out.width = '75%', fig.align = 'center'}
 knitr::include_graphics('~/dev/da-project/images/cifar-10.png')
-```
-
-# Diverse vs. Similar Samples from a Point Cloud
-
-```{r out.width = '75%', fig.align = 'center'}
-knitr::include_graphics('~/dev/da-project/images/pointcloud.png')
 ```
 
 # Diverse vs. Similar vs. Random Samples of CIFAR-10 Cats
@@ -569,3 +567,57 @@ cifar10.val.from.train.df %>%
 # Autoencoders
 
 # Transfer Learning
+
+::: columns
+
+:::: column
+
+* CNNs can be thought of as supervised image embedding methods
+    * Second to last layer should be a linearly separable embedding
+* Pretrained Xception model (~80\% accuracy on CIFAR-10)
+    * Xception embedding results in ~80\% accuracy using $k$-NN
+    * Can be thought of as an ideal case for embedding CIFAR-10
+
+::::
+
+:::: column
+
+* Diverse sampling on Xception embedding still results in worse performance 
+than random sampling
+
+```{r, fig.align = 'center'}
+cifar10.translearn.df %>% 
+  dplyr::filter(train_set_type != 'similar') %>%
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  dplyr::mutate(
+    train_set_type = factor(train_set_type, 
+                            levels = c('diverse', 
+                                       'random',
+                                       'diverse with editing', 
+                                       'by cluster', 
+                                       'edited and by cluster'))) %>% 
+  ggplot() + 
+  scale_x_log10() +
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type),
+            size = 2) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type),
+                size = 2) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(5, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.75, .2),
+        legend.background = element_blank())
+```
+
+::::
+
+:::

@@ -1,7 +1,5 @@
 ---
-title: 
-  Experiments Around Training Data Selection Methods for 
-  Image Classification
+title: Training Set Selection for Image Classification
 subtitle: Department of Statistics Data Analysis Qualifying Exam
 author:
 - David Crandall
