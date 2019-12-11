@@ -1,7 +1,8 @@
 ---
-title: 'Training Set Selection for Image Classification'
-subtitle: 'Department of Statistics Data Analysis Qualifying Exam'
-author: David Crandall, John Koo, Michael Trosset
+title: |
+  | Training Set Selection for Image Classification
+subtitle: 'John Koo'
+author: 'Advised by: David Crandall, Michael Trosset'
 date: December 16, 2019
 output: 
   pdf_document:
@@ -654,7 +655,7 @@ performance (Fig. \ref{fig:cifar10_transfer}). Our results further suggest that
 there is no significant difference between using the GIST embedding or the 
 Inception V3 embedding for subsampling training data (Fig. \ref{fig:embed_compare}).
 
-# Conclusions and Future Work
+# Conclusions & Future Work
 
 In our work, we attempted to replicate the results of \citet{NIPS2018_7396} on 
 separate datasets. Then we tried to expand upon their methods via data editing 
