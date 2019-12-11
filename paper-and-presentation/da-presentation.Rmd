@@ -111,7 +111,7 @@ cifar10.translearn.df <- dplyr::bind_rows(
 # Background: Image Classification
 
 * Most predictive modeling involves some sort of $n \times p$ data matrix
-    * Observations typically thought of as living in $\mathbb{R}^k$
+    * Observations typically thought of as points in $\mathbb{R}^k$
 * Image data are harder to think of in terms of data matrices and Euclidean 
 space
 * Maybe use pixel values as features
@@ -142,14 +142,17 @@ curated image datasets and computational resources
 collection and labelling process can be expensive
 
 > - **Main question**: Is it possible to successfully train a neural network 
-with a small number of carefully selected images
+with a small number of carefully selected images?
 
 > - Largely based on "Toddler-Inspired Visual Object Learning" by Bambach, 
 Crandall, Smith, and Yu (2018)
 
 # Background: "Toddler-Inspired Visual Object Learning"
 
-* Compared images taken by first-person cameras mounted on toddlers and parents
+* Collected two samples of images:
+    * Taken from first-person cameras mounted on toddlers
+    * Taken from first-person cameras mounted on adults
+* Task: Identify which objects (toys) are in the images
 * Training VGG16 using toddler data resulted in higher test accuracy
 than training on parent data (same test set in both cases)
 
@@ -159,24 +162,31 @@ knitr::include_graphics('fig-4b.png')
 
 # Background: "Toddler-Inspired Visual Object Learning"
 
-* Objects in images from the toddler sample occupied more of the frame compared 
-to objects in images from the adult sample
-* Toddler 
+* Identified two characteristics of images from the toddler set vs. the 
+adult set:
+    * Objects in images from the toddler sample typically occupied more of the 
+    frame compared to objects in images from the adult sample
+    * The toddler sample tended to be more "diverse" than the adult sample
+    
+# Background: "Toddler-Inspired Visual Object Learning"
 
-* Distilled the differences in the datasets into two components: object size 
-(how much of the image does the object take up) and image "diversity" (hard to
-measure)
-* Subsampled the images to obtain training subsets of:
-    * big objects
-    * small objects
-    * diverse subset
-    * similar subset
-    * random subset
-* Image similarity/distance based on an image embedding (GIST features)
-* Found that when objects are larger or when images are more diverse, test 
-accuracy improves
+* Two experiments performed based on object size and sample diversity
+    * Find a subsample of big objects and a subsample of small objects, and 
+    train VGG16 on each. Determine which model attains a higher test accuracy.
+        * Object "size" defined by determining how much of the image a bounding 
+        box drawn around the object takes up
+    * Find a heterogeneous subsample and a homogeneous subsample, and train 
+    VGG16 on each. Determine which model attains a higher test accuracy. 
+        * Subsample "diversity" determined by pairwise distances of an image 
+        embedding (GIST features)
 
 # Background: "Toddler-Inspired Visual Object Learning"
+
+* Results consistent with intuition
+    * Subsample of big objects resulted in better models than subsample of 
+    small objects
+    * Heterogeneous subsample resulted in better models than homogeneous 
+    subsample
 
 ::: columns
 
@@ -227,9 +237,6 @@ knitr::include_graphics('~/dev/da-project/images/n02115641_8578.jpg')
 ::: 
 
 # Reproduction Study: Stanford Dogs dataset
-
-* Some evidence that object size affects training
-* No significant evidence that image diversity affects training
 
 ::: columns
 
@@ -315,15 +322,15 @@ knitr::include_graphics('~/dev/da-project/images/cifar-10.png')
 
 # Diverse vs. Similar vs. Random Samples of CIFAR-10 Cats
 
-```{r out.width = '50%', fig.align = 'center'}
+```{r out.width = '75%', fig.align = 'center'}
 knitr::include_graphics('~/dev/da-project/images/diverse-cats.png')
 ```
 
-```{r out.width = '50%', fig.align = 'center'}
+```{r out.width = '75%', fig.align = 'center'}
 knitr::include_graphics('~/dev/da-project/images/similar-cats.png')
 ```
 
-```{r out.width = '50%', fig.align = 'center'}
+```{r out.width = '75%', fig.align = 'center'}
 knitr::include_graphics('~/dev/da-project/images/random-cats.png')
 ```
 
@@ -379,7 +386,7 @@ test set)
 
 # Wilson Editing
 
-* Algorithm
+* Method
 
     1. Use Wilson editing (using the GIST embedding) to reduce the training set 
     2. For a training size $n$, draw a diverse sample from the edited training 
