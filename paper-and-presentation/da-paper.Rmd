@@ -1,13 +1,11 @@
 ---
-title: Training Set Selection for Image Classification
-subtitle: Department of Statistics Data Analysis Qualifying Exam
-author:
-- David Crandall
-- John Koo
-- Michael Trosset
+title: 'Training Set Selection for Image Classification'
+subtitle: 'Department of Statistics Data Analysis Qualifying Exam'
+author: David Crandall, John Koo, Michael Trosset
 date: December 16, 2019
 output: 
   pdf_document:
+  # rticles::jss_article:
     number_sections: yes
     citation_package: natbib
     latex_engine: pdflatex
@@ -738,3 +736,4 @@ based methods using iterative CNN-generated embeddings.
 ```
 
 # References
+
