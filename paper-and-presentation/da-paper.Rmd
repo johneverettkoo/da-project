@@ -17,6 +17,7 @@ urlcolor: blue
 header-includes:
 - \usepackage{float}
 - \usepackage{mathtools}
+- \usepackage{natbib}
 - \setcitestyle{numbers,square}
 - \usepackage{caption}
 - \captionsetup[figure]{font=scriptsize}
