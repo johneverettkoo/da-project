@@ -165,8 +165,8 @@ and a fixed training set size, it is possible to tailor the training set for
 fitting a VGG16 network that results in better or worse performance on a 
 separate test set. They then described two characteristics of the datasets that 
 seemed to correspond to model performance: object size (how much of the image 
-the object takes up) and diversity (after embedding the images in 
-$\mathbb{R}^d$, how much space the training point cloud takes up). Their study 
+the object takes up) and sample diversity (after embedding a sample of images in 
+$\mathbb{R}^d$, how much space the point cloud takes up). Their study 
 showed that model performance correlated positively with object size in the 
 training set, and training sets consisting of "diverse" images tended to 
 outperform those consisting of "similar" images. 
@@ -176,7 +176,7 @@ outperform those consisting of "similar" images.
 The data in the above study is as follows:
 
 * Training images were sampled from the frames of first person video feeds, 
-from the point of view of toddlers and parents playing with one of 24 toys. The 
+from the point of view of toddlers playing with one of 24 toys. The 
 video was taken with a $70^\circ$ lens. Bounding boxes of the toys were 
 drawn for each image to determine the size and location of the toy. The images 
 were blurred around the object using the bounding box information to simulate 
@@ -190,11 +190,11 @@ Both experiments involved fitting VGG16 networks on a particular training set.
 The size experiment can be described as follows: Frames were randomly sampled
 from the video feeds and ranked according to object size (median of around 
 10\%). These were then split into a training set of "big" objects and a 
-training set of "small" objects. It was shown that the model fit on the big
-objects outperformed the model fit on the small objects when comparing test
+training set of "small" objects. It was shown that models fit on the big
+objects outperformed models fit on the small objects when comparing test
 accuracies. The images were also cropped into the object to simulate varying
 focal lengths from the original $70^\circ$ down to $30^\circ$ in increments of 
-$10^\circ$, and the croppedimages outperformed the original images, further
+$10^\circ$, and the cropped images outperformed the original images, further
 supporting this result.
 
 The diversity experiment can be described as follows: Again, frames were 
@@ -205,13 +205,16 @@ Three training subsets were sampled based on the GIST features: a "diverse"
 subset that maximizes pairwise distances, a "similar" subset that minimizes 
 pairwise distances, and a "random" subset. Models fit on the random subset 
 outperformed the models fit on the diverse subset which outperformed the models 
-fit on the similar subset, using test accuracy to compare models. Images were
-again cropped to simulate various focal lengths, and lower focal lengths again
-resulted in better model performance. 
+fit on the similar subset, using test accuracy to compare models.[^diverse]
+Images were again cropped to simulate various focal lengths, and lower focal
+lengths again resulted in better model performance. 
 
 [^gist]: GIST features for our configuration are in $\mathbb{R}^{960}$.
 
-We attempted to replicate[^tensorflow] this study using the Stanford Dogs 
+[^diverse]: The random subset was twice as large as the diverse and similar 
+subsets.
+
+We attempted to reproduce[^tensorflow] these results using the Stanford Dogs 
 dataset\cite{KhoslaYaoJayadevaprakashFeiFei_FGVC2011}, which consists of around 
 20,000 images of 120 dog breeds. Most images contain one dog per image, and 
 images that contain multiple dogs were discarded. For each breed, 100 images 
@@ -220,7 +223,7 @@ were randomly selected for the training set (which were further divided into
 experiment), 25 images were randomly selected for the validation set, and the 
 rest were set aside for testing. The validation set was used to determine when 
 to stop training. No blurring was applied to these images. It is assumed that 
-all images were taken with a $70^\circ$ lens. Each experiment was replicated 10 
+all images were taken with a $70^\circ$ lens. Each experiment was repeated 10 
 times. 
 
 [^tensorflow]: Models were fit using TensorFlow 
@@ -271,25 +274,33 @@ dogs.diversity.df %>%
         legend.background = element_blank())
 ```
 
-Fig. \ref{fig:dogs_size} shows that for the original, uncropped images (FoV =
-$70^\circ$), models fit on the "big" subset tend to outperform models fit on 
-the "small" subset. However, instead of increased performance with reduced 
-field of view, we observed the opposite: as the images were cropped into the 
-objects of interest, the resulting models performed worse, and this was 
-especially true of the "big" subset. Closer inspection of the training images 
-reveals that the median bounding box coverage was around 50\%, compared to 
-10\% of the toys dataset, and cropping often resulted in cutting off parts of 
-the object of interest (Fig. \ref{fig:crop_dog}).
+Fig. \ref{fig:dogs_size} shows that for the original, uncropped images (field 
+of view = $70^\circ$), models fit on the "big" subset tend to outperform models 
+fit on the "small" subset. However, instead of increased performance with 
+reduced field of view, we observed the opposite: as the images were cropped 
+into the objects of interest, the resulting models performed worse, and this 
+was especially true of the "big" subset. Closer inspection of the training 
+images reveals that the median bounding box coverage was around 50\%, compared 
+to 10\% of the toys dataset, and cropping often resulted in cutting off parts 
+of the object of interest (Fig. \ref{fig:crop_dog}).[^imagenet] We can conclude 
+that the optimal training set consists of images in which the objects of 
+interest are prominently featured (i.e., take up most of the image) but are 
+completely contained within the image.
+
+[^imagenet]: In the paper by \citet{NIPS2018_7396}, it was similarly shown that 
+in the ImageNet data, on average, the bounding box around the object of 
+interest took up around 50% of the image. The lower object size in the toys 
+dataset may be due to these images taken from first person cameras.
 
 Results of the diversity[^leargist] experiment (Fig. \ref{fig:dogs_diverse})
-suggest that there may be some difference between the models fitted on 
+suggest that there may be some differences between the models fitted on 
 "diverse" vs. "similar" training sets at the original focal lengths, but it is 
 not clear whether this is a significant result. 
 
-[^leargist]: Diversity was based on pairwise GIST features, which were 
-extracted using a Python package created by \citet{lear_gist}.
+[^leargist]: Diversity was based on pairwise distances of GIST features, which 
+were extracted using a Python package created by \citet{lear_gist}.
 
-```{r crop_dog, out.width = '10%', fig.cap = 'An image from the Stanford Dogs dataset cropped from an assumed $70^\\circ$ FoV to $30^\\circ$.'}
+```{r crop_dog, out.width = '10%', fig.cap = 'An image from the Stanford Dogs dataset cropped from an assumed $70^\\circ$ field of view to $30^\\circ$.'}
 knitr::include_graphics('~/dev/da-project/images/cropped-dog.png')
 ```
 
