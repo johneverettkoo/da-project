@@ -111,7 +111,7 @@ cifar10.translearn.df <- dplyr::bind_rows(
 # Background: Image Classification
 
 * Most predictive modeling involves some sort of $n \times p$ data matrix
-    * Observations typically thought of as points in $\mathbb{R}^k$
+    * Observations typically thought of as points in $\mathbb{R}^p$
 * Image data are harder to think of in terms of data matrices and Euclidean 
 space
 * Maybe use pixel values as features
