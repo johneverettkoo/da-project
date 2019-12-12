@@ -179,7 +179,8 @@ knitr::include_graphics('fig-4b.png')
 ```
 
 \begin{flushright}
-\tiny Figures from Toddler paper
+\tiny Figures from "Toddler-Inspired Visual Object Learning" by Bambach, 
+Crandall, Smith, and Yu (2018)
 \end{flushright}
 
 # Background: "Toddler-Inspired Visual Object Learning"
@@ -227,7 +228,8 @@ knitr::include_graphics('fig-6c.png')
 :::
 
 \begin{flushright}
-\tiny Figures from Toddler paper
+\tiny Figures from "Toddler-Inspired Visual Object Learning" by Bambach, 
+Crandall, Smith, and Yu (2018)
 \end{flushright}
 
 # Outline and Summary
