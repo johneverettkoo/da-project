@@ -285,7 +285,7 @@ dogs.size.df %>%
                     colour = size),
                 width = 1,
                 size = 2) + 
-  labs(x = 'field of view', 
+  labs(x = 'degrees around gaze center', 
        y = 'test accuracy', 
        colour = NULL) + 
   theme(legend.key.width = unit(5, 'mm'),
@@ -312,7 +312,7 @@ dogs.diversity.df %>%
                     colour = train_set_type),
                 width = 1, 
                 size = 2) + 
-  labs(x = 'field of view', 
+  labs(x = 'degrees around gaze center', 
        y = 'test accuracy', 
        colour = NULL) + 
   theme(legend.key.width = unit(5, 'mm'),
