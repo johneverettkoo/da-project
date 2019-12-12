@@ -347,7 +347,7 @@ Sampling method
 knitr::include_graphics('~/dev/da-project/images/cifar-10.png')
 ```
 \begin{flushright}
-\tiny Source: https://www.cs.toronto.edu/~kriz/cifar.html
+\tiny Source: https://www.cs.toronto.edu/\textasciitilde kriz/cifar.html
 \end{flushright}
 
 # Diverse vs. Similar vs. Random Samples of CIFAR-10 Cats
