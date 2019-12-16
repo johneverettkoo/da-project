@@ -110,6 +110,8 @@ cifar10.translearn.df <- dplyr::bind_rows(
 
 # Background: Image Classification
 
+* Image classification (object/scene detection) doesn't fit well into 
+traditional predictive modeling frameworks
 * Most predictive modeling involves some sort of $n \times p$ data matrix
     * Observations typically thought of as points in $\mathbb{R}^p$
 * Image data are harder to think of in terms of data matrices and Euclidean 
@@ -118,8 +120,6 @@ space
     * Extremely high dimensional
         * Maybe can exploit spatial correlation to reduce number of dimensions
     * Doesn't account for image transformations such as translation or rotation
-* Image classification (object/scene detection) doesn't fit well into 
-traditional predictive modeling frameworks
 
 # Background: Convolutional Neural Networks
 
@@ -198,7 +198,7 @@ adult set:
     train VGG16 on each. Determine which model attains a higher test accuracy.
         * Object "size" defined by determining how much of the image a bounding 
         box drawn around the object takes up
-    * Find a heterogeneous subsample and a homogeneous subsample, and train 
+    * Find a diverse subsample and a similar subsample, and train 
     VGG16 on each. Determine which model attains a higher test accuracy. 
         * Subsample "diversity" determined by pairwise distances of an image 
         embedding (GIST features)
@@ -208,7 +208,7 @@ adult set:
 * Results consistent with intuition
     * Subsample of big objects resulted in better models than subsample of 
     small objects
-    * Heterogeneous subsample resulted in better models than homogeneous 
+    * Diverse subsample resulted in better models than similar 
     subsample
 
 ::: columns
@@ -234,13 +234,13 @@ Crandall, Smith, and Yu (2018)
 
 # Outline and Summary
 
-> 1. Applying the Toddler study to additional datasets
+1. Applying the Toddler study to additional datasets
 
-> 2. Overview of some other ways to select training sets
+2. Overview of some other ways to select training sets
 
-> 3. Conclusions and future work
+3. Conclusions and future work
 
-# Reproduction Study: Stanford Dogs dataset
+# Reproduction Study: Stanford Dogs Dataset
 
 * ~20,000 images of 120 dog breeds
 * 100 images per breed set aside for training
@@ -264,7 +264,7 @@ knitr::include_graphics('~/dev/da-project/images/n02115641_8578.jpg')
 
 ::: 
 
-# Reproduction Study: Stanford Dogs dataset
+# Reproduction Study: Stanford Dogs Dataset
 
 ::: columns
 
@@ -373,6 +373,10 @@ cifar10.val.from.train.df %>%
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
+  dplyr::mutate(train_set_type = factor(train_set_type, 
+                                        levels = c('diverse',
+                                                   'similar', 
+                                                   'random'))) %>% 
   ggplot() + 
   scale_x_log10() + 
   # scale_y_log10() + 
@@ -450,6 +454,10 @@ cifar10.edited.df %>%
   dplyr::group_by(train_size, train_set_type) %>% 
   dplyr::summarise(mean.acc = mean(accuracy),
                    sd.acc = sd(accuracy)) %>% 
+  dplyr::mutate(train_set_type = factor(train_set_type, 
+                                        levels = c('diverse',
+                                                   'similar', 
+                                                   'random'))) %>% 
   ggplot() + 
   scale_x_log10() + 
   # scale_y_log10() + 
@@ -574,7 +582,7 @@ model performance
 uniform random sampling
 * Future work
     * More sophisticated clustering methods
-    * Active learning based approaches
+    * Additional embedding techniques
 ::::
 
 :::: column
