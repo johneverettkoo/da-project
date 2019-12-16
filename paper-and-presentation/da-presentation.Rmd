@@ -662,7 +662,8 @@ knitr::include_graphics('~/dev/da-project/images/vgg16.png')
 ```
 
 \begin{flushright}
-\tiny Source: Simonyan and Zisserman
+\tiny Source: Simonyan and Zisserman, 
+"Very Deep Convolutional Networks for Large-Scale Image Recognition"
 \end{flushright}
 
 # Transfer Learning
@@ -734,6 +735,10 @@ knitr::include_graphics('~/dev/da-project/images/diverse-cats.png')
 ```{r out.width = '100%', fig.align = 'center'}
 knitr::include_graphics('~/dev/da-project/images/diverse-greyscale-cats.png')
 ```
+
+\begin{center}
+\tiny CIFAR-10 cat images sampled using the diverse and diverse-edited methods
+\end{center}
 
 :::: 
 
@@ -893,4 +898,10 @@ dplyr::bind_rows(
         text = element_text(size = 32),
         legend.position = c(.725, .2),
         legend.background = element_blank())
+```
+
+# The Bee Corp. Internship
+
+```{r fig.align = 'center', out.width = '50%'}
+knitr::include_graphics('~/dev/da-project/images/hive-thermal-analysis.png')
 ```
