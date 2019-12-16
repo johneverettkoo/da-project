@@ -529,7 +529,8 @@ into "subclasses"
 ::::
 
 :::: column
-```{r cifar10_clustered}
+
+```{r fig.align = 'center'}
 cifar10.clustered.df %>% 
   dplyr::filter(train_set_type != 'diverse by cluster') %>% 
   dplyr::mutate(train_set_type = ifelse(train_set_type == 'random', 
@@ -577,8 +578,8 @@ uniform random sampling
 ::::
 
 :::: column
-Comparison of sampling methods
-```{r compare}
+
+```{r compare, fig.align = 'center', fig.height = 8}
 cifar10.val.from.train.df %>% 
   dplyr::bind_rows(
     cifar10.edited.df %>%
@@ -633,6 +634,17 @@ cifar10.val.from.train.df %>%
 
 :::
 
+# Thank you
+
+Please feel free to ask questions
+
+Acknowledgements
+
+* David Crandall
+* Michael Trosset
+* Daniel McDonald
+* STAT-S 771/772/785 class
+
 # Supplemental Slides
 
 # VGG16
@@ -644,10 +656,6 @@ knitr::include_graphics('~/dev/da-project/images/vgg16.png')
 \begin{flushright}
 \tiny Source: Simonyan and Zisserman
 \end{flushright}
-
-# GIST Embedding
-
-# Autoencoders
 
 # Transfer Learning
 
@@ -706,3 +714,175 @@ cifar10.translearn.df %>%
 :::
 
 # Greyscale GIST Embedding
+
+::: columns
+
+:::: column
+
+```{r out.width = '100%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/diverse-cats.png')
+```
+
+```{r out.width = '100%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/diverse-greyscale-cats.png')
+```
+
+:::: 
+
+:::: column
+
+```{r fig.align = 'center'}
+greyscale.df <- readr::read_csv(
+  '~/dev/da-project/greyscale-embedding/cifar10-greyscale-training-results.csv')
+greyscale.edit.df <- readr::read_csv(file.path(
+  '~/dev/da-project/greyscale-embedding', 
+  'cifar10-greyscale-edited10nn-training-results.csv'))
+```
+
+```{r fig.align = 'center', fig.height = 8}
+dplyr::bind_rows(
+  greyscale.df %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'diverse', 
+                                          'diverse (greyscale)',
+                                          train_set_type)),
+  greyscale.edit.df %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'diverse',
+                                          'diverse (greyscale, edited)', 
+                                          train_set_type)),
+  cifar10.val.from.train.df,
+  cifar10.edited.df %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'diverse',
+                                          'diverse (edited)',
+                                          train_set_type))
+) %>% 
+  dplyr::filter(train_size <= 500) %>% 
+  dplyr::filter(!(train_set_type %in% c('similar'))) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  dplyr::mutate(
+    train_set_type = factor(train_set_type, 
+                            levels = c('random',
+                                       'diverse',
+                                       'diverse (edited)',
+                                       'diverse (greyscale)',
+                                       'diverse (greyscale, edited)'))) %>% 
+  ggplot() + 
+  scale_x_log10() +
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type),
+            size = 2) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type),
+                size = 2) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(5, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.725, .2),
+        legend.background = element_blank())
+```
+
+::::
+
+:::
+
+# 8 Scenes Dataset
+
+::: columns
+
+:::: column
+
+* Model: Categorize an image into one of eight scenes: coast, mountain, forest,
+open country, street, inside city, tall buildings, highway
+* ~2600 RGB images
+* Previous study: Model built on GIST features yields 80-85% accuracy
+* Repeated same experiments on these data
+
+::::
+
+:::: column
+
+```{r out.width = '100%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/diverse-scenes.png')
+```
+
+```{r out.width = '100%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/similar-scenes.png')
+```
+
+```{r out.width = '100%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/random-scenes.png')
+```
+
+```{r out.width = '100%', fig.align = 'center'}
+knitr::include_graphics('~/dev/da-project/images/diverse-edited-scenes.png')
+```
+
+\begin{center}
+\tiny "Coast" images sampled using the diverse, similar, random, and 
+diverse-edited methods
+\end{center}
+
+::::
+
+:::
+
+\begin{flushright}
+\tiny Source: https://people.csail.mit.edu/torralba/code/spatialenvelope/
+\end{flushright}
+
+# 8 Scenes Dataset
+
+```{r}
+eight.df <- readr::read_csv(
+  '~/dev/da-project/8-scene-categories/8scenes-results.csv'
+)
+eight.edit.df <- readr::read_csv(
+  '~/dev/da-project/8-scene-categories/8scenes-edited-results.csv'
+)
+```
+
+```{r fig.align = 'center'}
+dplyr::bind_rows(
+  eight.df,
+  eight.edit.df %>% 
+    dplyr::mutate(train_set_type = ifelse(train_set_type == 'diverse',
+                                          'diverse (edited)',
+                                          train_set_type))
+) %>% 
+  # dplyr::filter(train_size <= 50) %>%
+  # dplyr::filter(!(train_set_type %in% c('similar'))) %>% 
+  dplyr::group_by(train_size, train_set_type) %>% 
+  dplyr::summarise(mean.acc = mean(accuracy),
+                   sd.acc = sd(accuracy)) %>% 
+  dplyr::mutate(
+    train_set_type = factor(train_set_type, 
+                            levels = c('random',
+                                       'diverse',
+                                       'diverse (edited)',
+                                       'similar'))) %>% 
+  ggplot() + 
+  # scale_x_log10() +
+  # scale_y_log10() + 
+  geom_line(aes(x = train_size, y = mean.acc, colour = train_set_type),
+            size = 1) + 
+  scale_colour_brewer(palette = 'Set1') + 
+  geom_errorbar(aes(x = train_size, 
+                    ymin = mean.acc - z * sd.acc, 
+                    ymax = mean.acc + z * sd.acc, 
+                    colour = train_set_type),
+                size = 1,
+                width = 1) + 
+  labs(x = 'training set size per class', 
+       y = 'test accuracy',
+       colour = NULL) + 
+  theme(legend.key.width = unit(5, 'mm'),
+        text = element_text(size = 32),
+        legend.position = c(.725, .2),
+        legend.background = element_blank())
+```
